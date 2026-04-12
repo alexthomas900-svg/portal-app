@@ -1,0 +1,422 @@
+﻿Forman Christian College (A Chartered University)
+FACULTY PROMOTION PORTAL 
+
+You are an expert AI system designer, higher education policy architect, and academic evaluation engine builder.
+
+Design a complete Faculty Promotion Portal aligned with HEC Pakistan criteria for Associate Professor and Full Professor. The system must be rule-based, secure, dynamic, auditable, and capable of generating structured evaluation reports, eligibility decisions, and multi-layer reviewer feedback.
+
+====================================================
+A. OBJECTIVE
+====================================================
+Develop a comprehensive academic promotion system that:
+- Allows secure account creation for faculty, internal reviewers, and external reviewers
+- Enables draft creation, editing, and final submission workflow
+- Separates Application for Promotion and Self-Evaluation Report
+- Applies dynamic eligibility and scoring rules
+- Supports document uploads and validation
+- Evaluates teaching, research, scholarship, efforts to improve as teacher, and services
+- Enables internal and external reviewer evaluation
+- Generates structured reports and downloadable academic dossiers (PDF)
+
+====================================================
+B. APPLICATION STRUCTURE (TWO PART SYSTEM)
+====================================================
+
+1. APPLICATION FOR PROMOTION
+- All sections are fully applicable
+- Used for eligibility, scoring, and institutional decision
+
+Mandatory Document Requirements (Section G only):
+- Items 1, 2, 3, 5, 6, 8, and 9 must be uploaded before submission
+
+2. SELF-EVALUATION REPORT
+Only the following sections are included:
+- Section G (No. 5, 6, 7, 9)
+- Section H
+- Section I
+- Section J
+- Section K
+
+Mandatory Document Requirements (Section G only):
+- Items 1, 2, 3, 5, and 9 must be completed
+
+Applicant Note:
+- Download this application and send it to your Chair for review
+
+====================================================
+C. USER ROLES (STRICT RBAC SECURITY)
+====================================================
+
+1. Faculty Member (Applicant)
+2. Internal Reviewer
+3. External Reviewer
+4. Admin
+
+Access rules:
+- Faculty can only access their own application
+- ALL internal reviewers can access ALL submitted applications
+- External reviewers can ONLY access:
+- Updated CV only
+- Admin has full system access
+
+Applicants MUST NOT access:
+- Reviewer comments
+- Scoring sheets
+- External reviewer evaluations
+- Internal analysis modules
+
+====================================================
+D. APPLICATION LIFECYCLE
+====================================================
+
+1. Registration/Login:
+- Secure account creation for faculty
+- Secure account creation for internal reviewer
+- Secure account creation for external reviewer
+
+2. Draft Mode:
+- Save and update application anytime
+- Upload documents progressively
+
+3. Pre-Submission Review:
+- Complete application preview
+- Validation checklist (including Section G mandatory document checks)
+- Final confirmation before submission
+
+4. Final Submission:
+- Application becomes read-only
+
+5. Post Submission:
+- Applicant can view and DOWNLOAD:
+- Promotion Application (PDF)
+- Self-Evaluation Report (PDF)
+
+====================================================
+E. PROMOTION CRITERIA
+====================================================
+
+ASSOCIATE PROFESSOR:
+- Must pass Versant English Test (VET)
+- PhD required
+- Experience:
+- 10 years teaching/research OR
+- 5 years post-PhD experience
+- Publications:
+- Minimum 10 recognized journal articles
+
+FULL PROFESSOR:
+- Must pass Versant English Test (VET)
+- PhD required
+- Experience:
+- 15 years teaching/research OR
+- 10 years post-PhD experience
+- Publications:
+- Minimum 15 recognized journal articles
+
+Publication 
+* Add field:
+o Journal name
+o Year
+o Volume
+o Issue
+o Article title
+o Number of authors (dropdown) 
+o Author names (auto fields)
+* Add: 
+o "Add another publication" button
+o Publication count
+
+Recognized indexing sources:
+- HEC recognized journals
+- Scopus indexed journals
+- Web of Science (WoS)
+- DOAJ (Directory of Open Access Journals)
+- CNKI
+
+System must validate journal indexing and flag unrecognized publications.
+
+
+APA Generator
+*  Generate APA 7 format automatically 
+*  Format: 
+* Author(s). (Year). Title. Journal Name, Volume(Issue) 
+*  Show parallel list
+
+====================================================
+F. APPLICATION FORM
+====================================================
+
+1. Personal Information
+2. Qualification
+3. Experience
+4. Publications
+5. Teaching Effectiveness
+6. Efforts to Improve as Teacher
+7. Scholarship
+8. Research Statement
+9. Services
+10. Research Quality Report
+11. Final Declaration
+
+====================================================
+G. DOCUMENT MANAGEMENT
+====================================================
+
+1. Cover Letter (PDF)
+2. Research Statement (PDF)
+
+3. Qualification:
+- PhD Degree (PDF)
+- PhD Transcript (PDF)
+- HEC Attestation (PDF)
+- MPhil/MS (or International Master) Degree (PDF)
+- MPhil/MS (or International Master) Transcript (PDF)
+
+4. Experience:
+- Maximum 6 PDF experience letters
+
+5. Faculty Self-Evaluation:
+- Self Evaluation Form (no supporting documents required)
+- Chair's evaluation
+- Dean's evaluation
+
+6. Teaching Effectiveness:
+- 2 course outlines (PDF)
+- 2 assignments (PDF)
+- 2 supporting documents (PDF)
+
+7. Efforts to Improve as a Teacher (PDF):
+- List of CPDs undertaken
+- Reflection on teaching improvement activities
+
+8. Scholarship:
+- Include 10 abstracts of recognized papers (Associate Professor)
+- Include 15 abstracts of recognized papers (Full Professor)
+
+9. Updated CV (PDF)
+
+====================================================
+H. TEACHING EFFECTIVENESS (45 MARKS)
+====================================================
+
+Based on:
+- Fink's Taxonomy alignment
+- Higher-order thinking assessments
+- Chair rating (out of 5)
+- Dean rating (out of 5)
+- Student rating (out of 5)
+
+Scoring:
+- Exceeds Expectations = 45
+- Meets Expectations = 36
+- Minimally Acceptable = 27
+- Deficient = 18
+
+====================================================
+I. EFFORTS TO IMPROVE AS A TEACHER (20 MARKS)
+====================================================
+
+Evaluate:
+- Teaching innovation
+- Pedagogical improvement
+- Curriculum development
+- Reflective teaching practice
+
+Scoring:
+- Exceeds = 20
+- Meets = 16
+- Minimal = 12
+- Deficient = 8
+
+====================================================
+J. SCHOLARSHIP (25 MARKS)
+====================================================
+
+Includes:
+- Publications, books, grants, conferences
+- Editorial work, awards, supervision
+
+Ratings:
+- Chair rating (out of 5)
+- Dean rating (out of 5)
+
+Scoring:
+- Excellent = 25
+- Meets = 20
+- Minimal = 15
+- Deficient = 10
+Consider Updated CV for the evaluation
+====================================================
+K. SERVICES (20 MARKS)
+====================================================
+
+Includes:
+- Advising
+- Societies
+- Committee memberships
+- Charitable work
+- NGOs
+- Board memberships
+- Consulting
+
+Ratings:
+- Chair rating (out of 5)
+- Dean rating (out of 5)
+
+Scoring:
+- Exceeds = 20
+- Meets = 16
+- Minimal = 12
+- Deficient = 8
+Consider Updated CV for the evaluation
+====================================================
+L. RESEARCH QUALITY REPORT
+====================================================
+
+Automatically generate:
+
+1. Publication trend (last 5 years)
+
+2. Journal classification:
+- Q1 (W): SCIE, SSCI, AHCI
+- Q2 (X): ESCI, Scopus regional, OJS
+- Q3 (Y): HEC, MEDLINE, CNKI, DOAJ
+
+3. Citation analysis:
+- Google Scholar
+- Scopus
+- Web of Science
+- ResearchGate
+- Academia.edu
+
+Include:
+- Total citations
+- Yearly citation trend
+- h-index
+
+4. Research quality evaluation:
+- Diversity of research areas
+- Methodological variety
+- Academic impact
+- Consistency of output
+
+5. Final summary (170-200 words)
+
+====================================================
+M. INTERNAL REVIEWER MODULE
+====================================================
+
+Internal reviewers evaluate:
+
+APPLICATION FOR PROMOTION:
+- All sections
+
+SELF-EVALUATION REPORT:
+- Section G (5, 6, 7, 9)
+- Section H
+- Section I
+- Section J
+- Section K
+
+Each internal reviewer must provide:
+- Section-wise comments (max 200 words per section)
+- Mandatory remarks per section
+- Overall comments
+
+Overall evaluation:
+- Strongly Recommended
+- Recommended
+- Conditionally Recommended
+- Not Recommended
+
+====================================================
+N. EXTERNAL REVIEWER MODULE
+====================================================
+
+External reviewers can access ONLY:
+- Updated CV
+
+They must provide structured evaluation (max 200 words each section):
+
+1. Applicant's Overall Academic Standing
+2. Applicant's Research Productivity and Quality
+3. Applicant's Visibility and Contribution to the Academic Fraternity
+4. Reviewer's overall evaluation of the application:
+- Recommended
+- Not Recommended
+
+====================================================
+O. ELIGIBILITY ENGINE
+====================================================
+
+ASSOCIATE PROFESSOR:
+- Must pass Versant English Test (VET)
+- PhD required
+- Minimum 10 publications
+- 10 years experience OR 5 years post-PhD
+
+FULL PROFESSOR:
+- Must pass Versant English Test (VET)
+- PhD required
+- Minimum 15 publications
+- 15 years experience OR 10 years post-PhD
+
+Output:
+- Eligible / Conditionally Eligible / Not Eligible
+
+====================================================
+P. FINAL INSTITUTIONAL FIT DECISION
+====================================================
+
+Based on:
+- Teaching Effectiveness
+- Efforts to Improve as Teacher
+- Scholarship
+- Services
+- Research Statement
+- Research Quality Report
+- Internal & External Reviewer Reports
+
+====================================================
+Q. DASHBOARDS
+====================================================
+
+FACULTY:
+- Registration/Login
+- Draft mode (save & edit)
+- Final submission confirmation
+- Read-only post submission view
+- Download options for:
+- Promotion Application
+- Self-Evaluation Report
+
+INTERNAL REVIEWER:
+- Full evaluation dashboard
+- Scoring + comments
+- Access to all applications
+- Section-restricted evaluation
+
+EXTERNAL REVIEWER:
+- Limited access dashboard (CV only)
+- Structured narrative evaluation form
+
+ADMIN:
+- Full system control
+- Reviewer assignment
+- Application tracking
+- Reporting dashboard
+
+====================================================
+R. FINAL OUTPUT
+====================================================
+
+System must generate:
+- Academic dossier (PDF)
+- Internal reviewer report
+- External reviewer report
+- Research quality report (170-200 words)
+- Final institutional decision
+- Downloadable Promotion Application
+- Downloadable Self-Evaluation Report
+
+

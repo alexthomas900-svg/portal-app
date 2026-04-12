@@ -1,0 +1,142 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-primary: #1e40af;
+  --color-primary-light: #3b82f6;
+  --color-primary-dark: #1e3a8a;
+  --color-primary-50: #eff6ff;
+  --color-primary-100: #dbeafe;
+  --color-primary-600: #2563eb;
+  --color-primary-700: #1d4ed8;
+  --color-primary-800: #1e40af;
+  --color-primary-900: #1e3a8a;
+
+  --color-surface: #ffffff;
+  --color-surface-alt: #f8fafc;
+  --color-surface-hover: #f1f5f9;
+
+  --color-border: #e2e8f0;
+  --color-border-dark: #cbd5e1;
+
+  --color-text: #1e293b;
+  --color-text-secondary: #64748b;
+  --color-text-dim: #94a3b8;
+
+  --color-success: #16a34a;
+  --color-success-light: #dcfce7;
+  --color-warning: #d97706;
+  --color-warning-light: #fef3c7;
+  --color-danger: #dc2626;
+  --color-danger-light: #fee2e2;
+  --color-info: #0284c7;
+  --color-info-light: #e0f2fe;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+body {
+  @apply bg-surface-alt text-text antialiased;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-border-dark rounded-full;
+}
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-text-dim;
+}
+
+/* Form inputs */
+input[type='text'],
+input[type='email'],
+input[type='tel'],
+input[type='number'],
+input[type='date'],
+input[type='password'],
+select,
+textarea {
+  @apply w-full rounded-lg border border-border bg-surface px-3 py-2 text-text text-sm
+    placeholder:text-text-dim
+    focus:border-primary-light focus:ring-2 focus:ring-primary-100 focus:outline-none
+    transition-all duration-150;
+}
+
+textarea {
+  @apply resize-y min-h-[80px];
+}
+
+select {
+  @apply appearance-none cursor-pointer;
+}
+
+/* Buttons — base styles applied to each variant directly (Tailwind v4 compat) */
+.btn-primary {
+  @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium
+    transition-all duration-150 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed
+    bg-primary text-white hover:bg-primary-700 active:bg-primary-dark;
+}
+
+.btn-secondary {
+  @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium
+    transition-all duration-150 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed
+    bg-surface border border-border text-text hover:bg-surface-hover active:bg-border;
+}
+
+.btn-danger {
+  @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium
+    transition-all duration-150 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed
+    bg-danger text-white hover:bg-red-700;
+}
+
+.btn-ghost {
+  @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium
+    transition-all duration-150 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed
+    text-text-secondary hover:bg-surface-hover hover:text-text;
+}
+
+.btn-sm {
+  @apply px-3 py-1.5 text-xs;
+}
+
+.btn-lg {
+  @apply px-6 py-3 text-base;
+}
+
+/* Card */
+.card {
+  @apply bg-surface rounded-xl border border-border shadow-sm;
+}
+
+/* Badge — base styles applied to each variant directly (Tailwind v4 compat) */
+.badge-success {
+  @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-success-light text-success;
+}
+
+.badge-warning {
+  @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-warning-light text-warning;
+}
+
+.badge-danger {
+  @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-danger-light text-danger;
+}
+
+.badge-info {
+  @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-info-light text-info;
+}
+
+.badge-neutral {
+  @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-surface-hover text-text-secondary;
+}

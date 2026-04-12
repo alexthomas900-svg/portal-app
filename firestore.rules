@@ -1,0 +1,77 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper: check if user is authenticated
+    function isAuth() {
+      return request.auth != null;
+    }
+
+    // Helper: get user role from users collection
+    function getUserRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+
+    function isAdmin() {
+      return isAuth() && getUserRole() == 'admin';
+    }
+
+    function isFaculty() {
+      return isAuth() && getUserRole() == 'faculty';
+    }
+
+    function isInternalReviewer() {
+      return isAuth() && getUserRole() == 'internal_reviewer';
+    }
+
+    function isExternalReviewer() {
+      return isAuth() && getUserRole() == 'external_reviewer';
+    }
+
+    // Users collection
+    match /users/{userId} {
+      allow read: if isAuth() && (request.auth.uid == userId || isAdmin());
+      allow create: if isAuth() && request.auth.uid == userId;
+      allow update: if isAuth() && (request.auth.uid == userId || isAdmin());
+      allow delete: if isAdmin();
+    }
+
+    // Applications collection
+    match /applications/{appId} {
+      // Faculty can read/write their own applications
+      allow create: if isFaculty();
+      allow read: if isAuth() && (
+        resource.data.applicantUid == request.auth.uid ||
+        (isInternalReviewer() && resource.data.applicationType in ['promotion', 'contract_renewal']) ||
+        (isExternalReviewer() &&
+          resource.data.applicationType == 'promotion' &&
+          resource.data.promotionType == 'full_professor') ||
+        isAdmin()
+      );
+      allow update: if isAuth() && (
+        (resource.data.applicantUid == request.auth.uid && resource.data.status == 'draft') ||
+        isAdmin()
+      );
+      allow delete: if isAdmin();
+
+      // Internal reviews subcollection
+      match /internalReviews/{reviewId} {
+        allow read: if isAdmin() || isInternalReviewer();
+        allow create, update: if isInternalReviewer();
+        allow delete: if isAdmin();
+      }
+
+      // External reviews subcollection
+      match /externalReviews/{reviewId} {
+        allow read: if isAdmin();
+        allow create, update: if isExternalReviewer();
+        allow delete: if isAdmin();
+      }
+    }
+
+    // All users list (for admin)
+    match /users/{userId} {
+      allow list: if isAdmin();
+    }
+  }
+}

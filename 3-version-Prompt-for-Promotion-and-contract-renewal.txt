@@ -1,0 +1,265 @@
+Forman Christian College (A Chartered University)
+Faculty Promotion & Evaluation Portal - Prompt Agent Version
+
+A. ROLE
+* Act as: 
+o AI system designer 
+o Higher education policy expert 
+o Academic evaluation engine builder 
+
+B. OBJECTIVE
+* Design a secure, rule-based faculty portal 
+* Support three workflows: 
+o Promotion Application 
+o Contract Renewal Report 
+o Regular Self-Evaluation Report 
+* Ensure: 
+o eligibility automation 
+o scoring system 
+o reviewer workflows 
+o PDF report generation 
+
+C. USER ROLES (RBAC)
+* Faculty Applicant 
+* Internal Reviewer 
+* External Reviewer 
+* Admin 
+
+Access Rules
+* Faculty ? own applications only 
+* Internal reviewers ? all promotion and contract renewal applications 
+* External reviewers ? CV only (promotion to Full Professor only) 
+* Admin ? full access 
+* Faculty cannot access: 
+o reviewer comments 
+o scores 
+o evaluations 
+
+D. APPLICATION TYPES
+
+1. Promotion Application
+* Full sections included 
+* Used for: 
+o Promotion 
+* Review: 
+o Internal and External 
+
+2. Contract Renewal Report
+* Sections: 
+o Personal Information 
+o Qualification 
+o Experience 
+o Teaching Effectiveness 
+o Efforts to Improve 
+o Scholarship 
+o Services 
+* Used for: 
+o contract continuation 
+* Review: 
+o internal only 
+
+3. Regular Self-Evaluation Report
+* Sections: 
+o Personal Information 
+o Qualification 
+o Experience 
+o Teaching Effectiveness 
+o Efforts to Improve 
+o Scholarship 
+o Services 
+* Used for: 
+o annual performance review 
+* Review: 
+o Chair + Dean 
+
+
+E. DOCUMENT REQUIREMENTS
+
+Promotion (Section G)
+* Cover Letter 
+* Research Statement 
+* Qualification documents (PhD + transcripts + HEC attestation) 
+* Experience letters (max 6) 
+* Self-evaluation (Chair + Dean) 
+* Teaching documents 
+* CPD + reflection 
+* Research abstracts (10/15) 
+* Updated CV 
+
+Contract Renewal AND Regular Self-Evaluation (Same Requirements)
+* Self-Evaluation Form 
+* Chair Evaluation 
+* Dean Evaluation 
+* Teaching documents: 
+o 2 course outlines 
+o 2 assignments 
+o 2 supporting documents 
+* Efforts to Improve: 
+o CPD list 
+o reflection 
+* Updated CV 
+
+
+F. APPLICATION LIFECYCLE
+* Registration: 
+o email verification 
+o admin approval 
+* Draft: 
+o save and edit 
+* Pre-submission: 
+o validation checklist 
+* Final submission: 
+o lock application 
+* Post submission: 
+o read-only 
+o download PDFs 
+
+
+G. PUBLICATION MODULE
+* Fields: 
+o journal name 
+o year 
+o volume/issue 
+o title of the article 
+o number of authors 
+o author names 
+
+Features
+Auto Count:
+* auto count (include only validated journals) 
+Quality of Publications:
+* Q1 (W): WoS (SCIE, SSCI, AHCI) 
+* Q2 (X): WoS (ESCI), Scopus (Q2 or X category) 
+* Q3 (Y): HEC, DOAJ, CNKI 
+Author Position:
+* 1st author (auto count) 
+* 2nd author (auto count) 
+* 3rd author (auto count) 
+Validation Output:
+* display: journal not recognized (if not validated) 
+
+Validation Rules
+* WoS (Q1 or W or X category) 
+* Scopus (Q2 or X category) 
+* DOAJ (Y category) 
+* CNKI (Y category) 
+
+
+H. APA GENERATOR
+* Auto format APA 7 
+* Show live formatted list 
+
+
+I. PROMOTION CRITERIA
+Associate Professor
+* PhD required 
+* VET required 
+* 10 years OR 5 post-PhD 
+* 10 publications 
+* Quality evaluation of: 
+o research statement 
+o teaching effectiveness 
+o efforts to improve as teacher 
+o publication quality (Q1/Q2/Q3, first author, h-index) 
+o services 
+
+Full Professor
+* PhD required 
+* VET required 
+* 15 years OR 10 post-PhD 
+* 15 publications 
+* Quality evaluation of: 
+o research statement 
+o teaching effectiveness 
+o efforts to improve as teacher 
+o publication quality (Q1/Q2/Q3, first author, h-index) 
+o services 
+
+
+J. SCORING SYSTEM
+Teaching (45)
+* Based on: 
+o documents (check alignment of SLOs and Assessment with Fink's and Bloom's Taxonomies) 
+* Scores: 
+o 45 / 36 / 27 / 18 
+
+Efforts to Improve as Teacher (10)
+* CPD + reflection 
+* Scores: 
+o 10 / 8 / 6 / 4 
+
+CPD-Based Scoring Rules (Efforts to Improve as Teacher)
+* = 50 CPD hours = Exceeds Expectations ? 10 marks 
+* 36-49 CPD hours = Meets Expectations ? 8 marks 
+* 11-35 CPD hours = Minimally Accepted ? 6 marks 
+* < 11 CPD hours = Deficient ? 4 marks 
+
+Scholarship (25)
+* Based on CV + self-evaluation 
+* Scores: 
+o 25 / 20 / 15 / 10 
+
+Services (20)
+* Based on CV 
+* Scores: 
+o 20 / 16 / 12 / 8 
+
+
+K. RESEARCH QUALITY REPORT
+* Generate: 
+o publication trends 
+o journal categories 
+o citation metrics 
+o h-index 
+* Output: 
+o 170-200 word summary 
+
+
+L. REVIEW MODULE
+Internal Reviewer
+* Access: 
+o all promotion applications 
+o all contract renewal reports 
+External Reviewer
+* Access: 
+o Full Professor promotion only 
+o CV only 
+
+
+M. ELIGIBILITY ENGINE
+* Promotion ? PhD + VET + publications + experience 
+* Contract ? VET + required documents 
+* Self ? VET + required documents 
+* Output: 
+o Eligible / Conditional / Not Eligible 
+
+
+N. DASHBOARDS
+* Faculty / Internal / External / Admin 
+
+
+O. FINAL OUTPUTS
+Promotion to Full Professor
+* Internal + External Review Reports 
+* Structured tables 
+* Reviewer comments 
+* Scores 
+* Decision section (blank) 
+* Signature section (blank) 
+
+Promotion to Associate Professor
+* Internal Review Report only 
+* Structured tables 
+* Reviewer comments 
+* Scores 
+* Decision section (blank) 
+* Signature section (blank) 
+
+Contract Renewal Report
+* Internal Review Summary 
+* Structured tables 
+* Reviewer comments 
+* Scores 
+* Decision section (blank) 
+* Signature section (blank) 
+
