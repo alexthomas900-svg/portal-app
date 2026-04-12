@@ -6,8 +6,8 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
 } from 'firebase/auth'
-import { doc, setDoc, Timestamp } from 'firebase/firestore'
-import { auth, db } from '../firebase'
+import { auth } from '../firebase'
+import { apiPost } from '../lib/api'
 import type { UserRole } from '../types'
 
 const googleProvider = new GoogleAuthProvider()
@@ -36,14 +36,8 @@ export async function registerWithEmail(
   department?: string,
 ) {
   const cred = await createUserWithEmailAndPassword(auth, email, password)
-  await setDoc(doc(db, 'users', cred.user.uid), {
-    uid: cred.user.uid,
-    email,
-    displayName,
-    role,
-    department: department || '',
-    createdAt: Timestamp.now(),
-  })
+  // Create the Firestore user profile via the backend API
+  await apiPost('/api/auth/register', { displayName, role, department: department || '' })
   return cred.user
 }
 
@@ -53,21 +47,4 @@ export async function signInWithEmail(email: string, password: string) {
 
 export async function signOut() {
   await fbSignOut(auth)
-}
-
-export async function createUserProfile(
-  uid: string,
-  email: string,
-  displayName: string,
-  role: UserRole,
-  department?: string,
-) {
-  await setDoc(doc(db, 'users', uid), {
-    uid,
-    email,
-    displayName,
-    role,
-    department: department || '',
-    createdAt: Timestamp.now(),
-  })
 }

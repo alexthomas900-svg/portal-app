@@ -1,7 +1,8 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { GraduationCap, Eye, EyeOff } from 'lucide-react'
 import { registerWithEmail, signInWithEmail, signInWithGoogle } from '../../services/auth'
+import { useAuth } from '../../contexts/AuthContext'
 
 const DEMO_EMAIL = import.meta.env.VITE_DEMO_EMAIL || 'demo@fccollege.edu.pk'
 const DEMO_PASSWORD = import.meta.env.VITE_DEMO_PASSWORD || 'Demo@12345'
@@ -12,7 +13,15 @@ export default function SignIn() {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const { user, loading: authLoading } = useAuth()
   const navigate = useNavigate()
+
+  // If auth context already has a signed-in user, redirect immediately.
+  useEffect(() => {
+    if (!authLoading && user) {
+      navigate('/dashboard', { replace: true })
+    }
+  }, [authLoading, user, navigate])
 
   const getAuthCode = (err: unknown): string => {
     if (typeof err === 'object' && err && 'code' in err) {
@@ -27,7 +36,8 @@ export default function SignIn() {
     setLoading(true)
     try {
       await signInWithEmail(email, password)
-      navigate('/dashboard')
+      navigate('/dashboard', { replace: true })
+      return
     } catch (err) {
       const code = getAuthCode(err)
 
@@ -43,23 +53,26 @@ export default function SignIn() {
           )
         } catch (registerErr) {
           const registerCode = getAuthCode(registerErr)
-          // If the account already exists, continue to sign in.
           if (registerCode && registerCode !== 'auth/email-already-in-use') {
-            throw registerErr
+            setError('Could not create demo account. Check Firebase configuration.')
+            setLoading(false)
+            return
           }
         }
 
         try {
           await signInWithEmail(DEMO_EMAIL, DEMO_PASSWORD)
-          navigate('/dashboard')
+          navigate('/dashboard', { replace: true })
           return
         } catch (secondErr) {
           const secondCode = getAuthCode(secondErr)
           if (secondCode === 'auth/invalid-credential') {
             setError('Demo account exists but credentials do not match. Delete demo user in Firebase Auth and try again.')
-            return
+          } else {
+            setError('Demo sign-in failed: ' + (secondErr instanceof Error ? secondErr.message : String(secondErr)))
           }
-          throw secondErr
+          setLoading(false)
+          return
         }
       }
 
@@ -70,7 +83,7 @@ export default function SignIn() {
       } else if (code === 'auth/too-many-requests') {
         setError('Too many attempts. Please wait a moment and try again.')
       } else {
-        setError('Invalid email or password. Please try again.')
+        setError('Sign-in failed (' + (code || 'unknown') + '). Check your email/password and Firebase config.')
       }
     } finally {
       setLoading(false)
@@ -82,7 +95,7 @@ export default function SignIn() {
     setLoading(true)
     try {
       await signInWithGoogle()
-      navigate('/dashboard')
+      navigate('/dashboard', { replace: true })
     } catch {
       setError('Google sign-in failed. Please try again.')
     } finally {

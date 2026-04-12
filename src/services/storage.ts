@@ -1,7 +1,6 @@
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { storage } from '../firebase'
 import type { DocumentFile } from '../types'
-import { Timestamp } from 'firebase/firestore'
 
 export async function uploadDocument(
   applicationId: string,
@@ -17,6 +16,6 @@ export async function uploadDocument(
     name: file.name,
     url,
     path,
-    uploadedAt: Timestamp.now(),
+    uploadedAt: new Date().toISOString(),
   }
 }

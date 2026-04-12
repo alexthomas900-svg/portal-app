@@ -1,8 +1,9 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { GraduationCap, Eye, EyeOff } from 'lucide-react'
 import { registerWithEmail } from '../../services/auth'
 import type { UserRole } from '../../types'
+import { useAuth } from '../../contexts/AuthContext'
 
 export default function Register() {
   const [displayName, setDisplayName] = useState('')
@@ -14,7 +15,14 @@ export default function Register() {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const { user, loading: authLoading } = useAuth()
   const navigate = useNavigate()
+
+  useEffect(() => {
+    if (!authLoading && user) {
+      navigate('/dashboard', { replace: true })
+    }
+  }, [authLoading, user, navigate])
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
@@ -32,7 +40,7 @@ export default function Register() {
     setLoading(true)
     try {
       await registerWithEmail(email, password, displayName, role, department)
-      navigate('/dashboard')
+      navigate('/dashboard', { replace: true })
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Registration failed'
       if (msg.includes('email-already-in-use')) {

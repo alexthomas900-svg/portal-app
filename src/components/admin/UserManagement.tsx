@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
-import { collection, getDocs, doc, updateDoc, deleteDoc } from 'firebase/firestore'
-import { db } from '../../firebase'
+import { apiGet, apiPut, apiDelete } from '../../lib/api'
 import { Trash2, Shield } from 'lucide-react'
 import type { UserProfile, UserRole } from '../../types'
 
@@ -9,9 +8,15 @@ export default function UserManagement() {
   const [loading, setLoading] = useState(true)
 
   const loadUsers = async () => {
-    const snap = await getDocs(collection(db, 'users'))
-    setUsers(snap.docs.map((d) => d.data() as UserProfile))
-    setLoading(false)
+    try {
+      const data = await apiGet<UserProfile[]>('/api/auth/users')
+      setUsers(data)
+    } catch (error) {
+      console.error('Failed to load users:', error)
+      setUsers([])
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => {
@@ -19,13 +24,13 @@ export default function UserManagement() {
   }, [])
 
   const handleRoleChange = async (uid: string, role: UserRole) => {
-    await updateDoc(doc(db, 'users', uid), { role })
+    await apiPut(`/api/auth/users/${uid}/role`, { role })
     await loadUsers()
   }
 
   const handleDelete = async (uid: string) => {
     if (!window.confirm('Delete this user profile? (Auth account remains)')) return
-    await deleteDoc(doc(db, 'users', uid))
+    await apiDelete(`/api/auth/users/${uid}`)
     await loadUsers()
   }
 
@@ -91,7 +96,7 @@ export default function UserManagement() {
                     </div>
                   </td>
                   <td className="px-4 py-3 text-text-secondary">
-                    {user.createdAt?.toDate?.()?.toLocaleDateString() || '—'}
+                    {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : '—'}
                   </td>
                   <td className="px-4 py-3 text-right">
                     <button

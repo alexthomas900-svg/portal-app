@@ -76,7 +76,7 @@ export default function ApplicationView() {
               {app.personalInfo.fullName} · {app.personalInfo.department}
             </p>
             <p className="text-xs text-text-dim mt-1">
-              Submitted: {app.submittedAt?.toDate?.()?.toLocaleDateString() || 'N/A'}
+              Submitted: {app.submittedAt ? new Date(app.submittedAt).toLocaleDateString() : 'N/A'}
             </p>
           </div>
 

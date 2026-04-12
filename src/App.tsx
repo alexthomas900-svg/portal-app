@@ -26,6 +26,8 @@ import UserManagement from './components/admin/UserManagement'
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
+
+  // While auth is initializing, show spinner.
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-surface-alt">
@@ -37,6 +39,14 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
     )
   }
   if (!user) return <Navigate to="/signin" replace />
+  return <>{children}</>
+}
+
+function RedirectIfAuthenticated({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth()
+
+  if (loading) return <>{children}</>
+  if (user) return <Navigate to="/dashboard" replace />
   return <>{children}</>
 }
 
@@ -66,8 +76,22 @@ export default function App() {
   return (
     <Routes>
       {/* Public */}
-      <Route path="/signin" element={<SignIn />} />
-      <Route path="/register" element={<Register />} />
+      <Route
+        path="/signin"
+        element={
+          <RedirectIfAuthenticated>
+            <SignIn />
+          </RedirectIfAuthenticated>
+        }
+      />
+      <Route
+        path="/register"
+        element={
+          <RedirectIfAuthenticated>
+            <Register />
+          </RedirectIfAuthenticated>
+        }
+      />
 
       {/* Protected */}
       <Route

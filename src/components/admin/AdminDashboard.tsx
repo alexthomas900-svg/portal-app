@@ -20,6 +20,7 @@ import {
 export default function AdminDashboard() {
   const [applications, setApplications] = useState<Application[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [filter, setFilter] = useState<ApplicationStatus | 'all'>('all')
   const navigate = useNavigate()
 
@@ -28,9 +29,16 @@ export default function AdminDashboard() {
   }, [])
 
   const loadApplications = async () => {
-    const apps = await getAllApplications()
-    setApplications(apps)
-    setLoading(false)
+    try {
+      const apps = await getAllApplications()
+      setApplications(apps)
+    } catch (err) {
+      console.error('Failed to load admin applications:', err)
+      setApplications([])
+      setError(err instanceof Error ? err.message : 'Failed to load applications.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleStatusChange = async (appId: string, status: ApplicationStatus) => {
@@ -66,6 +74,12 @@ export default function AdminDashboard() {
 
   return (
     <div className="max-w-6xl mx-auto">
+      {error && (
+        <div className="mb-4 p-3 rounded-lg bg-danger-light border border-red-200 text-danger text-sm">
+          <strong>Error:</strong> {error}
+        </div>
+      )}
+
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-text">Admin Dashboard</h1>
         <p className="text-text-secondary mt-1">
@@ -179,7 +193,7 @@ export default function AdminDashboard() {
                     <StatusBadge status={app.status} />
                   </td>
                   <td className="px-4 py-3 text-text-secondary">
-                    {app.createdAt?.toDate?.()?.toLocaleDateString() || '—'}
+                    {app.createdAt ? new Date(app.createdAt).toLocaleDateString() : '—'}
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-end gap-1">

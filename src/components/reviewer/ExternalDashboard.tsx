@@ -7,17 +7,38 @@ import type { Application } from '../../types'
 export default function ExternalDashboard() {
   const [applications, setApplications] = useState<Application[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const navigate = useNavigate()
 
   useEffect(() => {
-    getSubmittedApplications().then((apps) => {
-      setApplications(
-        apps.filter(
-          (app) => app.applicationType === 'promotion' && app.promotionType === 'full_professor',
-        ),
-      )
-      setLoading(false)
-    })
+    let active = true
+
+    const loadApplications = async () => {
+      try {
+        const apps = await getSubmittedApplications()
+        if (active) {
+          setApplications(
+            apps.filter(
+              (app) => app.applicationType === 'promotion' && app.promotionType === 'full_professor',
+            ),
+          )
+        }
+      } catch (err) {
+        console.error('Failed to load external reviewer applications:', err)
+        if (active) {
+          setApplications([])
+          setError(err instanceof Error ? err.message : 'Failed to load applications.')
+        }
+      } finally {
+        if (active) setLoading(false)
+      }
+    }
+
+    void loadApplications()
+
+    return () => {
+      active = false
+    }
   }, [])
 
   if (loading) {
@@ -30,6 +51,12 @@ export default function ExternalDashboard() {
 
   return (
     <div className="max-w-5xl mx-auto">
+      {error && (
+        <div className="mb-4 p-3 rounded-lg bg-danger-light border border-red-200 text-danger text-sm">
+          <strong>Error:</strong> {error}
+        </div>
+      )}
+
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-text">External Reviewer Dashboard</h1>
         <p className="text-text-secondary mt-1">

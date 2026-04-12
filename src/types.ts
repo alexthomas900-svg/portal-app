@@ -1,5 +1,3 @@
-import { Timestamp } from 'firebase/firestore'
-
 // ── Roles ──
 export type UserRole = 'faculty' | 'internal_reviewer' | 'external_reviewer' | 'admin'
 
@@ -9,7 +7,7 @@ export interface UserProfile {
   displayName: string
   role: UserRole
   department?: string
-  createdAt: Timestamp
+  createdAt: string
 }
 
 // ── Promotion ──
@@ -120,7 +118,7 @@ export interface DocumentFile {
   name: string
   url: string
   path: string
-  uploadedAt: Timestamp
+  uploadedAt: string
 }
 
 export interface ApplicationDocuments {
@@ -219,9 +217,9 @@ export interface Application {
 
   vetPassed: boolean
 
-  createdAt: Timestamp
-  updatedAt: Timestamp
-  submittedAt?: Timestamp
+  createdAt: string
+  updatedAt: string
+  submittedAt?: string
 }
 
 // ── Reviews ──
@@ -250,8 +248,8 @@ export interface InternalReview {
   overallComments: string
   recommendation: ReviewRecommendation
 
-  createdAt: Timestamp
-  updatedAt: Timestamp
+  createdAt: string
+  updatedAt: string
 }
 
 export type ExternalRecommendation = 'recommended' | 'not_recommended'
@@ -267,8 +265,8 @@ export interface ExternalReview {
   visibilityContribution: string
   overallEvaluation: ExternalRecommendation
 
-  createdAt: Timestamp
-  updatedAt: Timestamp
+  createdAt: string
+  updatedAt: string
 }
 
 // ── Helpers ──

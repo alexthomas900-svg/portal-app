@@ -10,14 +10,36 @@ export default function FacultyDashboard() {
   const { user, profile } = useAuth()
   const [applications, setApplications] = useState<Application[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const navigate = useNavigate()
 
   useEffect(() => {
-    if (user) {
-      getMyApplications(user.uid).then((apps) => {
-        setApplications(apps)
-        setLoading(false)
-      })
+    let active = true
+
+    const loadApplications = async () => {
+      if (!user) {
+        if (active) setLoading(false)
+        return
+      }
+
+      try {
+        const apps = await getMyApplications(user.uid)
+        if (active) setApplications(apps)
+      } catch (err) {
+        console.error('Failed to load faculty applications:', err)
+        if (active) {
+          setApplications([])
+          setError(err instanceof Error ? err.message : 'Failed to load applications. Check browser console for details.')
+        }
+      } finally {
+        if (active) setLoading(false)
+      }
+    }
+
+    void loadApplications()
+
+    return () => {
+      active = false
     }
   }, [user])
 
@@ -44,6 +66,21 @@ export default function FacultyDashboard() {
 
   return (
     <div className="max-w-5xl mx-auto">
+      {/* Profile warning */}
+      {!profile && (
+        <div className="mb-4 p-3 rounded-lg bg-warning-light border border-yellow-200 text-warning text-sm">
+          <strong>Warning:</strong> Your user profile could not be loaded from Firestore. Some features may not work.
+          Check that Firestore is enabled in your Firebase project and that security rules are deployed.
+        </div>
+      )}
+
+      {/* Data load error */}
+      {error && (
+        <div className="mb-4 p-3 rounded-lg bg-danger-light border border-red-200 text-danger text-sm">
+          <strong>Error:</strong> {error}
+        </div>
+      )}
+
       {/* Welcome */}
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-text">
@@ -132,7 +169,7 @@ export default function FacultyDashboard() {
                   </div>
                   <p className="text-xs text-text-secondary">
                     {app.personalInfo.department || 'Department not set'} · Created{' '}
-                    {app.createdAt?.toDate?.()?.toLocaleDateString() || '—'}
+                    {app.createdAt ? new Date(app.createdAt).toLocaleDateString() : '—'}
                   </p>
                 </div>
                 <div className="text-text-dim">
