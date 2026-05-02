@@ -2,21 +2,13 @@ import { initializeApp } from 'firebase/app'
 import { getAuth } from 'firebase/auth'
 import { getStorage } from 'firebase/storage'
 
-function requiredEnv(name: keyof ImportMetaEnv): string {
-  const value = import.meta.env[name]
-  if (!value) {
-    throw new Error(`Missing environment variable: ${name}`)
-  }
-  return value
-}
-
 const firebaseConfig = {
-  apiKey: requiredEnv('VITE_FB_API_KEY'),
-  authDomain: requiredEnv('VITE_FB_AUTH_DOMAIN'),
-  projectId: requiredEnv('VITE_FB_PROJECT_ID'),
-  storageBucket: requiredEnv('VITE_FB_STORAGE_BUCKET'),
-  messagingSenderId: requiredEnv('VITE_FB_MESSAGING_SENDER_ID'),
-  appId: requiredEnv('VITE_FB_APP_ID'),
+  apiKey: import.meta.env.VITE_FB_API_KEY || 'AIzaSyB-tEjNhZn8zWeV_QqDvJ25GKP4RrNTWtk',
+  authDomain: import.meta.env.VITE_FB_AUTH_DOMAIN || 'fcportal-569e5.firebaseapp.com',
+  projectId: import.meta.env.VITE_FB_PROJECT_ID || 'fcportal-569e5',
+  storageBucket: import.meta.env.VITE_FB_STORAGE_BUCKET || 'fcportal-569e5.firebasestorage.app',
+  messagingSenderId: import.meta.env.VITE_FB_MESSAGING_SENDER_ID || '895895495478',
+  appId: import.meta.env.VITE_FB_APP_ID || '1:895895495478:web:da614272a593f1fba60997',
 }
 
 const app = initializeApp(firebaseConfig)
