@@ -15,6 +15,15 @@ const corsOrigins = new Set([
   'http://localhost:3000',
 ])
 
+const extraOrigins = (process.env.CORS_ORIGINS ?? '')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean)
+
+for (const origin of extraOrigins) {
+  corsOrigins.add(origin)
+}
+
 function isFirebaseOrigin(origin: string): boolean {
   try {
     const url = new URL(origin)

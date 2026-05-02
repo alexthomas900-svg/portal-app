@@ -5,9 +5,28 @@ on:
     branches:
       - main
 
+permissions:
+  contents: write
+
+concurrency:
+  group: firebase-production-main
+  cancel-in-progress: true
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
+    env:
+      FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+      FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+      RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+      VITE_FB_API_KEY: ${{ secrets.VITE_FB_API_KEY }}
+      VITE_FB_AUTH_DOMAIN: ${{ secrets.VITE_FB_AUTH_DOMAIN }}
+      VITE_FB_PROJECT_ID: ${{ secrets.VITE_FB_PROJECT_ID }}
+      VITE_FB_STORAGE_BUCKET: ${{ secrets.VITE_FB_STORAGE_BUCKET }}
+      VITE_FB_MESSAGING_SENDER_ID: ${{ secrets.VITE_FB_MESSAGING_SENDER_ID }}
+      VITE_FB_APP_ID: ${{ secrets.VITE_FB_APP_ID }}
+      VITE_API_URL: ${{ secrets.VITE_API_URL }}
 
     steps:
       - name: Checkout repository
@@ -24,42 +43,20 @@ jobs:
 
       - name: Validate environment variables
         run: |
-          for var in VITE_FB_API_KEY VITE_FB_AUTH_DOMAIN VITE_FB_PROJECT_ID VITE_FB_STORAGE_BUCKET VITE_FB_MESSAGING_SENDER_ID VITE_FB_APP_ID; do
+          for var in FIREBASE_PROJECT_ID FIREBASE_TOKEN VITE_API_URL VITE_FB_API_KEY VITE_FB_AUTH_DOMAIN VITE_FB_PROJECT_ID VITE_FB_STORAGE_BUCKET VITE_FB_MESSAGING_SENDER_ID VITE_FB_APP_ID; do
             if [ -z "${!var}" ]; then
               echo "Error: $var is not set"
               exit 1
             fi
           done
           echo "All environment variables are set"
-        env:
-          VITE_FB_API_KEY: ${{ secrets.VITE_FB_API_KEY }}
-          VITE_FB_AUTH_DOMAIN: ${{ secrets.VITE_FB_AUTH_DOMAIN }}
-          VITE_FB_PROJECT_ID: ${{ secrets.VITE_FB_PROJECT_ID }}
-          VITE_FB_STORAGE_BUCKET: ${{ secrets.VITE_FB_STORAGE_BUCKET }}
-          VITE_FB_MESSAGING_SENDER_ID: ${{ secrets.VITE_FB_MESSAGING_SENDER_ID }}
-          VITE_FB_APP_ID: ${{ secrets.VITE_FB_APP_ID }}
-
-      - name: Validate Firebase token
-        run: |
-          if [ -z "$FIREBASE_TOKEN" ]; then
-            echo "Error: FIREBASE_TOKEN is not set"
-            exit 1
-          fi
-          echo "Firebase token is set"
-        env:
-          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
 
       - name: Build project
         run: npm run build
-        env:
-          VITE_FB_API_KEY: ${{ secrets.VITE_FB_API_KEY }}
-          VITE_FB_AUTH_DOMAIN: ${{ secrets.VITE_FB_AUTH_DOMAIN }}
-          VITE_FB_PROJECT_ID: ${{ secrets.VITE_FB_PROJECT_ID }}
-          VITE_FB_STORAGE_BUCKET: ${{ secrets.VITE_FB_STORAGE_BUCKET }}
-          VITE_FB_MESSAGING_SENDER_ID: ${{ secrets.VITE_FB_MESSAGING_SENDER_ID }}
-          VITE_FB_APP_ID: ${{ secrets.VITE_FB_APP_ID }}
 
       - name: Deploy to Firebase Hosting (Live)
-        run: npx firebase-tools deploy --only hosting --token "$FIREBASE_TOKEN"
-        env:
-          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+        run: npx firebase-tools deploy --only hosting --project "$FIREBASE_PROJECT_ID" --token "$FIREBASE_TOKEN" --non-interactive
+
+      - name: Trigger Render backend deploy
+        if: ${{ env.RENDER_DEPLOY_HOOK_URL != '' }}
+        run: curl --fail --silent --show-error --request POST "$RENDER_DEPLOY_HOOK_URL"

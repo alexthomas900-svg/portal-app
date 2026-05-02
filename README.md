@@ -8,6 +8,7 @@ Faculty Promotion Portal for Forman Christian College (A Chartered University), 
 - **Vite** build tooling
 - **Tailwind CSS v4** for styling
 - **Firebase** (Auth, Firestore, Storage, Hosting)
+- **Render** (Node/Express backend API)
 - **GitHub Actions** CI/CD with PR preview deploys
 
 ## Features
@@ -33,7 +34,19 @@ Faculty Promotion Portal for Forman Christian College (A Chartered University), 
 4. Enable **Firebase Storage**
 5. Enable **Firebase Hosting**
 
-### 2. Environment Variables
+### 2. Render Backend Setup
+
+Create a Render Web Service from the `backend/` folder:
+
+You can use the included `render.yaml` blueprint for one-click setup, or create the service manually.
+
+1. Runtime: **Node**
+2. Build command: `npm ci && npm run build`
+3. Start command: `npm run start`
+4. Set environment variables from `backend/.env.example`
+5. Copy your Render URL (example: `https://your-api.onrender.com`)
+
+### 3. Environment Variables
 
 Copy `.env.example` to `.env` and fill in your Firebase config:
 
@@ -41,14 +54,20 @@ Copy `.env.example` to `.env` and fill in your Firebase config:
 cp .env.example .env
 ```
 
-### 3. Install & Run
+Set the backend API URL in `.env`:
+
+```bash
+VITE_API_URL=https://your-api.onrender.com
+```
+
+### 4. Install & Run
 
 ```bash
 npm install
 npm run dev
 ```
 
-### 4. Deploy
+### 5. Deploy
 
 ```bash
 npm run hosting:deploy
@@ -62,18 +81,30 @@ The project uses the same CI/CD pattern as your notes-app:
 2. **Create a branch** and open a PR
 3. GitHub Actions automatically builds and deploys a **preview URL** (commented on the PR)
 4. **Review and merge** — push to `main` auto-deploys to production
+5. Optional: production workflow can trigger Render deploy via webhook
 
 ### Required GitHub Secrets
 
 | Secret | Description |
 |--------|-------------|
+| `FIREBASE_PROJECT_ID` | Firebase project id used for deploy target |
 | `VITE_FB_API_KEY` | Firebase API key |
 | `VITE_FB_AUTH_DOMAIN` | Firebase auth domain |
 | `VITE_FB_PROJECT_ID` | Firebase project ID |
 | `VITE_FB_STORAGE_BUCKET` | Firebase storage bucket |
 | `VITE_FB_MESSAGING_SENDER_ID` | Firebase messaging sender ID |
 | `VITE_FB_APP_ID` | Firebase app ID |
+| `VITE_API_URL` | Render backend URL used by frontend builds |
 | `FIREBASE_TOKEN` | Firebase CLI token (`npx firebase-tools login:ci`) |
+| `RENDER_DEPLOY_HOOK_URL` | Optional Render deploy hook for auto backend redeploy on `main` |
+
+## Recommended Deployment Model
+
+- Frontend: Firebase Hosting (preview channels + production)
+- Backend/API: Render Web Service
+- Data/Auth/Files: Firebase (Firestore/Auth/Storage)
+
+This keeps branch preview URLs and automatic production deploys in GitHub Actions while avoiding frontend runtime failures caused by missing API base URLs.
 
 ## Project Structure
 
