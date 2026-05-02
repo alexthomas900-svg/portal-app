@@ -58,6 +58,36 @@ router.post('/register', requireAuth, async (req: AuthRequest, res) => {
   }
 })
 
+// POST /api/auth/bootstrap — ensure profile exists for authenticated user
+router.post('/bootstrap', requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const userRef = db.collection('users').doc(req.uid!)
+    const snap = await userRef.get()
+
+    if (snap.exists) {
+      res.json({ created: false, profile: snap.data() })
+      return
+    }
+
+    const body = req.body as { displayName?: string; department?: string }
+    const fallbackName = req.userEmail ? req.userEmail.split('@')[0] : 'New User'
+    const profile = {
+      uid: req.uid!,
+      email: req.userEmail || '',
+      displayName: body.displayName?.trim() || fallbackName,
+      role: 'faculty',
+      department: body.department?.trim() || '',
+      createdAt: FieldValue.serverTimestamp(),
+    }
+
+    await userRef.set(profile)
+    res.json({ created: true, profile })
+  } catch (err) {
+    console.error('POST /api/auth/bootstrap error:', err)
+    res.status(500).json({ error: 'Failed to bootstrap profile' })
+  }
+})
+
 // GET /api/auth/users — admin: list all users
 router.get('/users', requireAuth, async (req: AuthRequest, res) => {
   try {
