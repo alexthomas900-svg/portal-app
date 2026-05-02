@@ -6,6 +6,40 @@ import { FieldValue } from 'firebase-admin/firestore'
 
 const router = Router()
 
+function toMillis(value: unknown): number {
+  if (!value) return 0
+  if (value instanceof Date) return value.getTime()
+  if (typeof value === 'string') {
+    const parsed = Date.parse(value)
+    return Number.isNaN(parsed) ? 0 : parsed
+  }
+  if (typeof value === 'object' && value !== null) {
+    const maybeTimestamp = value as {
+      toDate?: () => Date
+      seconds?: number
+      nanoseconds?: number
+      _seconds?: number
+      _nanoseconds?: number
+    }
+
+    if (typeof maybeTimestamp.toDate === 'function') {
+      return maybeTimestamp.toDate().getTime()
+    }
+
+    const seconds = maybeTimestamp.seconds ?? maybeTimestamp._seconds
+    const nanoseconds = maybeTimestamp.nanoseconds ?? maybeTimestamp._nanoseconds ?? 0
+    if (typeof seconds === 'number') {
+      return seconds * 1000 + nanoseconds / 1_000_000
+    }
+  }
+
+  return 0
+}
+
+function sortByCreatedAtDesc<T extends { createdAt?: unknown }>(items: T[]): T[] {
+  return [...items].sort((left, right) => toMillis(right.createdAt) - toMillis(left.createdAt))
+}
+
 // Helper: get caller role
 async function getCallerRole(uid: string): Promise<string | null> {
   const snap = await db.collection('users').doc(uid).get()
@@ -126,12 +160,8 @@ router.post('/', requireAuth, async (req: AuthRequest, res) => {
 // GET /api/applications/mine — get current user's applications
 router.get('/mine', requireAuth, async (req: AuthRequest, res) => {
   try {
-    const snap = await db
-      .collection('applications')
-      .where('applicantUid', '==', req.uid!)
-      .orderBy('createdAt', 'desc')
-      .get()
-    res.json(snap.docs.map((d) => d.data()))
+    const snap = await db.collection('applications').where('applicantUid', '==', req.uid!).get()
+    res.json(sortByCreatedAtDesc(snap.docs.map((d) => d.data())))
   } catch (err) {
     console.error('GET /api/applications/mine error:', err)
     res.status(500).json({ error: 'Failed to fetch applications' })
@@ -150,9 +180,8 @@ router.get('/submitted', requireAuth, async (req: AuthRequest, res) => {
     const snap = await db
       .collection('applications')
       .where('status', 'in', ['submitted', 'under_review', 'reviewed', 'decision_made'])
-      .orderBy('createdAt', 'desc')
       .get()
-    res.json(snap.docs.map((d) => d.data()))
+    res.json(sortByCreatedAtDesc(snap.docs.map((d) => d.data())))
   } catch (err) {
     console.error('GET /api/applications/submitted error:', err)
     res.status(500).json({ error: 'Failed to fetch submitted applications' })
@@ -168,11 +197,8 @@ router.get('/all', requireAuth, async (req: AuthRequest, res) => {
       return
     }
 
-    const snap = await db
-      .collection('applications')
-      .orderBy('createdAt', 'desc')
-      .get()
-    res.json(snap.docs.map((d) => d.data()))
+    const snap = await db.collection('applications').get()
+    res.json(sortByCreatedAtDesc(snap.docs.map((d) => d.data())))
   } catch (err) {
     console.error('GET /api/applications/all error:', err)
     res.status(500).json({ error: 'Failed to fetch all applications' })
