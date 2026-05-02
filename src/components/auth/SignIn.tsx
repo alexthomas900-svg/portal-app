@@ -3,9 +3,58 @@ import { useNavigate, Link } from 'react-router-dom'
 import { GraduationCap, Eye, EyeOff } from 'lucide-react'
 import { registerWithEmail, signInWithEmail, signInWithGoogle } from '../../services/auth'
 import { useAuth } from '../../contexts/AuthContext'
+import type { UserRole } from '../../types'
 
-const DEMO_EMAIL = import.meta.env.VITE_DEMO_EMAIL || 'demo@fccollege.edu.pk'
 const DEMO_PASSWORD = import.meta.env.VITE_DEMO_PASSWORD || 'Demo@12345'
+
+interface DemoAccount {
+  label: string
+  role: UserRole
+  email: string
+  displayName: string
+  department: string
+  badge: string
+  badgeClass: string
+}
+
+const DEMO_ACCOUNTS: DemoAccount[] = [
+  {
+    label: 'Faculty',
+    role: 'faculty',
+    email: import.meta.env.VITE_DEMO_EMAIL || 'demo.faculty@fccollege.edu.pk',
+    displayName: 'Demo Faculty',
+    department: 'Computer Science',
+    badge: 'Applicant',
+    badgeClass: 'bg-primary/10 text-primary',
+  },
+  {
+    label: 'Internal Reviewer',
+    role: 'internal_reviewer',
+    email: 'demo.internal@fccollege.edu.pk',
+    displayName: 'Demo Internal Reviewer',
+    department: 'Faculty Review Committee',
+    badge: 'Reviewer',
+    badgeClass: 'bg-info/10 text-info',
+  },
+  {
+    label: 'External Reviewer',
+    role: 'external_reviewer',
+    email: 'demo.external@fccollege.edu.pk',
+    displayName: 'Demo External Reviewer',
+    department: 'External Committee',
+    badge: 'External',
+    badgeClass: 'bg-warning/10 text-warning',
+  },
+  {
+    label: 'Admin',
+    role: 'admin',
+    email: 'demo.admin@fccollege.edu.pk',
+    displayName: 'Demo Admin',
+    department: 'Administration',
+    badge: 'Admin',
+    badgeClass: 'bg-success/10 text-success',
+  },
+]
 
 export default function SignIn() {
   const [email, setEmail] = useState('')
@@ -41,15 +90,18 @@ export default function SignIn() {
     } catch (err) {
       const code = getAuthCode(err)
 
-      // For live demos, auto-create the seeded demo account if it does not exist yet.
-      if (email === DEMO_EMAIL && password === DEMO_PASSWORD) {
+      // Auto-create any demo account that doesn't exist yet
+      const demoAccount = DEMO_ACCOUNTS.find(
+        (a) => a.email === email && password === DEMO_PASSWORD,
+      )
+      if (demoAccount) {
         try {
           await registerWithEmail(
-            DEMO_EMAIL,
+            demoAccount.email,
             DEMO_PASSWORD,
-            'Demo Faculty User',
-            'faculty',
-            'Computer Science',
+            demoAccount.displayName,
+            demoAccount.role,
+            demoAccount.department,
           )
         } catch (registerErr) {
           const registerCode = getAuthCode(registerErr)
@@ -61,13 +113,13 @@ export default function SignIn() {
         }
 
         try {
-          await signInWithEmail(DEMO_EMAIL, DEMO_PASSWORD)
+          await signInWithEmail(demoAccount.email, DEMO_PASSWORD)
           navigate('/dashboard', { replace: true })
           return
         } catch (secondErr) {
           const secondCode = getAuthCode(secondErr)
           if (secondCode === 'auth/invalid-credential') {
-            setError('Demo account exists but credentials do not match. Delete demo user in Firebase Auth and try again.')
+            setError('Demo account exists but credentials do not match. Delete it in Firebase Auth and try again.')
           } else {
             setError('Demo sign-in failed: ' + (secondErr instanceof Error ? secondErr.message : String(secondErr)))
           }
@@ -123,20 +175,32 @@ export default function SignIn() {
             <div className="mb-4 p-3 bg-danger-light text-danger text-sm rounded-lg">{error}</div>
           )}
 
-          <div className="mb-4 p-3 rounded-lg border border-info/20 bg-info-light text-info text-xs">
-            <p className="font-semibold mb-1">Demo Account</p>
-            <p>Email: {DEMO_EMAIL}</p>
-            <p>Password: {DEMO_PASSWORD}</p>
-            <button
-              type="button"
-              onClick={() => {
-                setEmail(DEMO_EMAIL)
-                setPassword(DEMO_PASSWORD)
-              }}
-              className="mt-2 btn-secondary btn-sm"
-            >
-              Use Demo Credentials
-            </button>
+          {/* Demo accounts panel */}
+          <div className="mb-5 p-3 rounded-lg border border-border bg-surface-alt">
+            <p className="text-xs font-semibold text-text-secondary mb-2 uppercase tracking-wide">
+              Demo accounts — all use password: <span className="font-mono text-text">{DEMO_PASSWORD}</span>
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              {DEMO_ACCOUNTS.map((account) => (
+                <button
+                  key={account.role}
+                  type="button"
+                  onClick={() => {
+                    setEmail(account.email)
+                    setPassword(DEMO_PASSWORD)
+                  }}
+                  className="flex items-center gap-2 rounded-lg border border-border bg-surface px-2.5 py-2 text-left hover:border-primary/40 hover:bg-primary/5 transition-colors"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-semibold text-text truncate">{account.label}</p>
+                    <p className="text-[10px] text-text-dim truncate">{account.email}</p>
+                  </div>
+                  <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium ${account.badgeClass}`}>
+                    {account.badge}
+                  </span>
+                </button>
+              ))}
+            </div>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">

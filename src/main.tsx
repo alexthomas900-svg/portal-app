@@ -63,6 +63,11 @@ window.addEventListener('unhandledrejection', (event) => {
   showFatalError(message)
 })
 
+// Wake up Render backend early — free tier spins down after 15 min of inactivity.
+// Fire-and-forget: any failure is silently swallowed so it never blocks the UI.
+const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:5000'
+fetch(`${API_URL}/health`, { method: 'GET' }).catch(() => {/* backend cold-starting, ignore */})
+
 async function bootstrap() {
   if (!rootElement) return
   const root = createRoot(rootElement)
