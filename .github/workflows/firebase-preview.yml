@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+      FIREBASE_PROJECT_ID: fcportal-569e5
       FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
       VITE_API_URL: ${{ secrets.VITE_API_URL }}
 
@@ -37,7 +37,7 @@ jobs:
 
       - name: Validate environment variables
         run: |
-          for var in FIREBASE_PROJECT_ID FIREBASE_TOKEN VITE_API_URL; do
+          for var in FIREBASE_TOKEN VITE_API_URL; do
             if [ -z "${!var}" ]; then
               echo "Error: $var is not set"
               exit 1
