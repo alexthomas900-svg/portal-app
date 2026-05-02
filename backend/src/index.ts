@@ -57,6 +57,18 @@ app.use('/api/auth', authRoutes)
 app.use('/api/applications', applicationRoutes)
 app.use('/api/reviews', reviewRoutes)
 
+app.get('/', (_req, res) => {
+  res.json({
+    service: 'portal-app-backend',
+    status: 'ok',
+    health: '/api/health',
+  })
+})
+
+app.get('/health', (_req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() })
+})
+
 // ── Health check ──
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() })
