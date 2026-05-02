@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { onAuthStateChanged, type User } from 'firebase/auth'
-import { auth } from '../firebase'
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore'
+import { auth, db } from '../firebase'
 import { apiGet, apiPost } from '../lib/api'
 import type { UserProfile, UserRole } from '../types'
 import { seedDemoDataIfNeeded } from '../services/demoSeed'
@@ -46,8 +47,61 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setState((prev) => ({ ...prev, user }))
       }
 
+      // Capture as non-null — we already returned early if user was null
+      const authedUser = user
+
+      // Helper: read profile directly from Firestore
+      async function loadProfileFromFirestore(): Promise<UserProfile | null> {
+        const snap = await getDoc(doc(db, 'users', authedUser.uid))
+        if (!snap.exists()) return null
+        return snap.data() as UserProfile
+      }
+
+      // Helper: create a default profile directly in Firestore
+      async function bootstrapProfileInFirestore(): Promise<UserProfile> {
+        const displayName = authedUser.displayName || authedUser.email?.split('@')[0] || 'New User'
+        const profile: UserProfile = {
+          uid: authedUser.uid,
+          email: authedUser.email ?? '',
+          displayName,
+          role: 'faculty',
+          createdAt: new Date().toISOString(),
+        }
+        await setDoc(doc(db, 'users', authedUser.uid), {
+          ...profile,
+          createdAt: serverTimestamp(),
+        })
+        return profile
+      }
+
       try {
-        const profile = await apiGet<UserProfile>('/api/auth/me')
+        let profile: UserProfile | null = null
+
+        // Try backend first; fall back to direct Firestore read on network errors
+        try {
+          profile = await apiGet<UserProfile>('/api/auth/me')
+        } catch (backendErr) {
+          const msg = backendErr instanceof Error ? backendErr.message : String(backendErr)
+          if (msg.includes('Profile not found')) {
+            // Backend reachable but no doc — try Firestore direct bootstrap
+            try {
+              await apiPost('/api/auth/bootstrap', {
+                displayName: authedUser.displayName || authedUser.email?.split('@')[0] || 'New User',
+              })
+              profile = await apiGet<UserProfile>('/api/auth/me')
+            } catch {
+              // Backend bootstrap failed — write directly to Firestore
+              profile = await loadProfileFromFirestore()
+              if (!profile) profile = await bootstrapProfileInFirestore()
+            }
+          } else {
+            // Network error (backend sleeping, CORS, etc.) — go direct to Firestore
+            console.warn('Backend unreachable, falling back to Firestore:', msg)
+            profile = await loadProfileFromFirestore()
+            if (!profile) profile = await bootstrapProfileInFirestore()
+          }
+        }
+
         if (cancelled) return
         if (profile) {
           seedDemoDataIfNeeded(profile).catch((err) => {
@@ -58,21 +112,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setState({ user, profile: null, loading: false, role: null })
         }
       } catch (err) {
-        const message = err instanceof Error ? err.message : String(err)
-        if (message.includes('Profile not found')) {
-          try {
-            await apiPost('/api/auth/bootstrap', {
-              displayName: user.displayName || user.email?.split('@')[0] || 'New User',
-            })
-            const profile = await apiGet<UserProfile>('/api/auth/me')
-            if (!cancelled) {
-              setState({ user, profile, loading: false, role: profile.role })
-            }
-            return
-          } catch (bootstrapErr) {
-            console.error('Failed to bootstrap user profile:', bootstrapErr)
-          }
-        }
         console.error('Failed to load user profile:', err)
         if (!cancelled) setState({ user, profile: null, loading: false, role: null })
       }
