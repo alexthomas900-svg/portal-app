@@ -67,6 +67,14 @@ service cloud.firestore {
         allow create, update: if isExternalReviewer();
         allow delete: if isAdmin();
       }
+
+      // Reviewer criterion-linked comments — reviewers and admins only, never applicants
+      match /reviewerComments/{commentId} {
+        allow read: if isAdmin() || isInternalReviewer() || isExternalReviewer();
+        allow create: if isInternalReviewer() || isExternalReviewer() || isAdmin();
+        allow update: if isAdmin();
+        allow delete: if isAdmin();
+      }
     }
 
     // All users list (for admin)

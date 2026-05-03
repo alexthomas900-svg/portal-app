@@ -1,8 +1,10 @@
-import type { ServicesData, RatingLevel } from '../../../types'
+import type { ServicesData, RatingLevel, DocumentFile } from '../../../types'
+import FileUpload from '../../shared/FileUpload'
 
 interface Props {
   data: ServicesData
   onChange: (data: ServicesData) => void
+  applicationId: string
 }
 
 const RATING_OPTIONS: { value: RatingLevel; label: string; score: number }[] = [
@@ -12,7 +14,7 @@ const RATING_OPTIONS: { value: RatingLevel; label: string; score: number }[] = [
   { value: 'deficient', label: 'Deficient', score: 8 },
 ]
 
-export default function ServicesStep({ data, onChange }: Props) {
+export default function ServicesStep({ data, onChange, applicationId }: Props) {
   const update = (field: keyof ServicesData, value: unknown) => {
     onChange({ ...data, [field]: value })
   }
@@ -27,6 +29,10 @@ export default function ServicesStep({ data, onChange }: Props) {
           Maximum 20 marks. Current score:{' '}
           <span className="font-semibold text-primary">{currentScore}</span>
         </p>
+      </div>
+
+      <div className="p-3 rounded-lg bg-warning-light border border-yellow-200 text-sm text-warning">
+        <strong>Note:</strong> Service starts as <em>Deficient</em> and is upgraded based on uploaded evidence (committee letters, service proofs).
       </div>
 
       <div className="space-y-4">
@@ -104,6 +110,27 @@ export default function ServicesStep({ data, onChange }: Props) {
               rows={3}
             />
           </div>
+        </div>
+
+        {/* Section-level evidence uploads */}
+        <div className="space-y-3 pt-2 border-t border-border">
+          <p className="text-xs font-semibold text-text-secondary uppercase tracking-wide">Evidence Documents</p>
+          <FileUpload
+            applicationId={applicationId}
+            category="committeeLetters"
+            label="Committee Appointment Letters / Board Memberships"
+            multiple
+            existingFiles={data.committeeLetters ?? []}
+            onUpload={(files: DocumentFile[]) => update('committeeLetters', files)}
+          />
+          <FileUpload
+            applicationId={applicationId}
+            category="serviceProofs"
+            label="Service Proof Documents (NGO letters, consulting contracts, etc.)"
+            multiple
+            existingFiles={data.serviceProofs ?? []}
+            onUpload={(files: DocumentFile[]) => update('serviceProofs', files)}
+          />
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

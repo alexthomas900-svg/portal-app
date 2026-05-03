@@ -16,6 +16,7 @@ import ResearchStatementStep from './steps/ResearchStatement'
 import ServicesStep from './steps/Services'
 import DocumentUploadStep from './steps/DocumentUpload'
 import DeclarationStep from './steps/Declaration'
+import ApplicationReview from './ApplicationReview'
 
 const PROMOTION_STEP_LABELS = [
   'Personal Info',
@@ -28,6 +29,7 @@ const PROMOTION_STEP_LABELS = [
   'Research',
   'Services',
   'Documents',
+  'Review',
   'Declaration',
 ]
 
@@ -40,6 +42,7 @@ const NON_PROMOTION_STEP_LABELS = [
   'Scholarship',
   'Services',
   'Documents',
+  'Review',
   'Declaration',
 ]
 
@@ -162,12 +165,14 @@ export default function ApplicationForm() {
     const researchIndex = 7
     const servicesIndex = isPromotion ? 8 : 6
     const documentsIndex = isPromotion ? 9 : 7
-    const declarationIndex = isPromotion ? 10 : 8
+    const reviewIndex = isPromotion ? 10 : 8
+    const declarationIndex = isPromotion ? 11 : 9
 
     if (step === teachingIndex) {
       return (
         <TeachingStep
           data={application.teachingEffectiveness}
+          applicationId={application.id}
           onChange={(teachingEffectiveness) => updateApp({ teachingEffectiveness })}
         />
       )
@@ -177,6 +182,7 @@ export default function ApplicationForm() {
       return (
         <EffortsToImproveStep
           data={application.effortsToImprove}
+          applicationId={application.id}
           onChange={(effortsToImprove) => updateApp({ effortsToImprove })}
         />
       )
@@ -186,6 +192,7 @@ export default function ApplicationForm() {
       return (
         <ScholarshipStep
           data={application.scholarship}
+          applicationId={application.id}
           onChange={(scholarship) => updateApp({ scholarship })}
         />
       )
@@ -204,6 +211,7 @@ export default function ApplicationForm() {
       return (
         <ServicesStep
           data={application.services}
+          applicationId={application.id}
           onChange={(services) => updateApp({ services })}
         />
       )
@@ -219,6 +227,10 @@ export default function ApplicationForm() {
           onChange={(documents) => updateApp({ documents })}
         />
       )
+    }
+
+    if (step === reviewIndex) {
+      return <ApplicationReview application={application} />
     }
 
     if (step === declarationIndex) {

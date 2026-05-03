@@ -12,7 +12,7 @@ import {
 } from 'firebase/firestore'
 import { apiGet, apiPost, apiPut, apiDelete } from '../lib/api'
 import { auth, db } from '../firebase'
-import type { Application } from '../types'
+import type { Application, EvaluationReport, PublicationVerification, ReviewerComment } from '../types'
 
 function toIsoString(value: unknown): string {
   if (!value) return new Date().toISOString()
@@ -85,12 +85,13 @@ function buildEmptyApplication(
     experience: [],
     publications: [],
     teachingEffectiveness: {
+      bloomAlignment: '',
       finkAlignment: '',
       higherOrderThinking: '',
       chairRating: 0,
       deanRating: 0,
       studentRating: 0,
-      overallRating: 'meets',
+      overallRating: 'deficient',
     },
     effortsToImprove: {
       innovations: '',
@@ -99,7 +100,7 @@ function buildEmptyApplication(
       reflectivePractice: '',
       cpdsUndertaken: '',
       cpdHours: 0,
-      overallRating: 'meets',
+      overallRating: 'deficient',
     },
     scholarship: {
       summary: '',
@@ -110,7 +111,7 @@ function buildEmptyApplication(
       supervision: '',
       chairRating: 0,
       deanRating: 0,
-      overallRating: 'meets',
+      overallRating: 'deficient',
     },
     researchStatement: '',
     services: {
@@ -123,7 +124,7 @@ function buildEmptyApplication(
       consulting: '',
       chairRating: 0,
       deanRating: 0,
-      overallRating: 'meets',
+      overallRating: 'deficient',
     },
     documents: {
       experienceLetters: [],
@@ -262,4 +263,31 @@ export async function updateApplicationStatus(id: string, status: Application['s
 
 export async function deleteApplication(id: string): Promise<void> {
   await apiDelete(`/api/applications/${id}`)
+}
+
+export async function verifyPublication(
+  applicationId: string,
+  pubId: string,
+): Promise<PublicationVerification> {
+  return apiPost<PublicationVerification>(`/api/applications/${applicationId}/publications/${pubId}/verify`, {})
+}
+
+export async function runEvaluation(applicationId: string): Promise<EvaluationReport> {
+  return apiPost<EvaluationReport>(`/api/applications/${applicationId}/evaluate`, {})
+}
+
+export async function getReviewerReport(applicationId: string): Promise<EvaluationReport | null> {
+  return apiGet<EvaluationReport | null>(`/api/applications/${applicationId}/reviewer-report`)
+}
+
+export async function getReviewerComments(applicationId: string): Promise<ReviewerComment[]> {
+  return apiGet<ReviewerComment[]>(`/api/applications/${applicationId}/reviewer-comments`)
+}
+
+export async function addReviewerComment(
+  applicationId: string,
+  criterion: string,
+  comment: string,
+): Promise<ReviewerComment> {
+  return apiPost<ReviewerComment>(`/api/applications/${applicationId}/reviewer-comments`, { criterion, comment })
 }

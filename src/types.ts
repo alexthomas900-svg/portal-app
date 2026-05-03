@@ -53,6 +53,26 @@ export interface ExperienceEntry {
 export type JournalIndexing = 'HEC' | 'Scopus' | 'WoS' | 'DOAJ' | 'CNKI' | 'Other'
 export type JournalQuartile = 'Q1' | 'Q2' | 'Q3' | 'Unranked'
 
+// ── Publication Verification ──
+export type PublicationVerificationStatus = 'verified' | 'unverified' | 'unknown'
+export type VerificationSourceName = 'HEC' | 'SCOPUS' | 'WOS' | 'OTHER'
+
+export interface PublicationVerificationSource {
+  source: VerificationSourceName
+  matched: boolean
+  confidence?: number
+  checkedAt: string
+  referenceUrl?: string
+  notes?: string
+}
+
+export interface PublicationVerification {
+  status: PublicationVerificationStatus
+  sources: PublicationVerificationSource[]
+  flagReason?: string
+  lastCheckedAt?: string
+}
+
 export interface Publication {
   id: string
   journalName: string
@@ -66,17 +86,93 @@ export interface Publication {
   recognized: boolean
   quartile: JournalQuartile
   apaReference: string
+  verification?: PublicationVerification
+}
+
+// ── Rubric Scoring ──
+export interface RubricCriterion {
+  id: string
+  score: number
+  rationale: string
+  evidenceLinks: string[]
+}
+
+export interface TeachingRubricScores {
+  bloomAlignment: RubricCriterion
+  finkAlignment: RubricCriterion
+  higherOrderAssessment: RubricCriterion
+  cognitiveComplexity: RubricCriterion
+  multiSourceInputs: RubricCriterion
+  preliminaryScore: number
+  aiGeneratedFeedback: string
+}
+
+export interface EffortsRubricScores {
+  trainingCertifications: RubricCriterion
+  workshopsAttended: RubricCriterion
+  reflectivePractice: RubricCriterion
+  preliminaryScore: number
+  aiGeneratedFeedback: string
+}
+
+export interface ScholarlyRubricScores {
+  verifiedPublications: RubricCriterion
+  conferenceParticipation: RubricCriterion
+  editorialWork: RubricCriterion
+  supervision: RubricCriterion
+  preliminaryScore: number
+  aiGeneratedFeedback: string
+}
+
+export interface ServiceRubricScores {
+  committeeWork: RubricCriterion
+  institutionalContributions: RubricCriterion
+  communityService: RubricCriterion
+  preliminaryScore: number
+  aiGeneratedFeedback: string
+}
+
+// ── Reviewer-Only Evaluation Report ──
+export interface EvaluationReport {
+  applicationId: string
+  teaching: TeachingRubricScores
+  efforts: EffortsRubricScores
+  scholarly: ScholarlyRubricScores
+  service: ServiceRubricScores
+  publicationFlags: string[]
+  generatedAt: string
+  generatedBy: string
+}
+
+// ── Reviewer Criterion-Linked Comment ──
+export interface ReviewerComment {
+  id: string
+  applicationId: string
+  criterion: string
+  comment: string
+  authorUid: string
+  authorName: string
+  authorRole: UserRole
+  createdAt: string
 }
 
 export type RatingLevel = 'exceeds' | 'meets' | 'minimal' | 'deficient'
 
 export interface TeachingEffectiveness {
+  bloomAlignment: string
   finkAlignment: string
   higherOrderThinking: string
   chairRating: number
   deanRating: number
   studentRating: number
   overallRating: RatingLevel
+  // Section-level evidence uploads
+  syllabi?: DocumentFile[]
+  sloDocuments?: DocumentFile[]
+  assessmentSamples?: DocumentFile[]
+  studentFeedbackDocs?: DocumentFile[]
+  // Reviewer-only rubric scores (not displayed to applicant)
+  rubricScores?: TeachingRubricScores
 }
 
 export interface EffortsToImprove {
@@ -87,6 +183,12 @@ export interface EffortsToImprove {
   cpdsUndertaken: string
   cpdHours: number
   overallRating: RatingLevel
+  // Section-level evidence uploads
+  trainingCertificates?: DocumentFile[]
+  workshopAttendance?: DocumentFile[]
+  reflectiveEssays?: DocumentFile[]
+  // Reviewer-only rubric scores
+  rubricScores?: EffortsRubricScores
 }
 
 export interface ScholarshipData {
@@ -99,6 +201,12 @@ export interface ScholarshipData {
   chairRating: number
   deanRating: number
   overallRating: RatingLevel
+  // Section-level evidence uploads
+  publicationProofs?: DocumentFile[]
+  conferenceProofs?: DocumentFile[]
+  grantDocuments?: DocumentFile[]
+  // Reviewer-only rubric scores
+  rubricScores?: ScholarlyRubricScores
 }
 
 export interface ServicesData {
@@ -112,6 +220,11 @@ export interface ServicesData {
   chairRating: number
   deanRating: number
   overallRating: RatingLevel
+  // Section-level evidence uploads
+  committeeLetters?: DocumentFile[]
+  serviceProofs?: DocumentFile[]
+  // Reviewer-only rubric scores
+  rubricScores?: ServiceRubricScores
 }
 
 export interface DocumentFile {
@@ -217,6 +330,9 @@ export interface Application {
 
   vetPassed: boolean
 
+  // Reviewer-only — never sent in applicant-facing API responses
+  evaluationReport?: EvaluationReport
+
   createdAt: string
   updatedAt: string
   submittedAt?: string
@@ -288,12 +404,13 @@ export function emptyPersonalInfo(): PersonalInfo {
 
 export function emptyTeachingEffectiveness(): TeachingEffectiveness {
   return {
+    bloomAlignment: '',
     finkAlignment: '',
     higherOrderThinking: '',
     chairRating: 0,
     deanRating: 0,
     studentRating: 0,
-    overallRating: 'meets',
+    overallRating: 'deficient',
   }
 }
 
@@ -305,7 +422,7 @@ export function emptyEffortsToImprove(): EffortsToImprove {
     reflectivePractice: '',
     cpdsUndertaken: '',
     cpdHours: 0,
-    overallRating: 'meets',
+    overallRating: 'deficient',
   }
 }
 
@@ -329,7 +446,7 @@ export function emptyScholarship(): ScholarshipData {
     supervision: '',
     chairRating: 0,
     deanRating: 0,
-    overallRating: 'meets',
+    overallRating: 'deficient',
   }
 }
 
@@ -344,7 +461,7 @@ export function emptyServices(): ServicesData {
     consulting: '',
     chairRating: 0,
     deanRating: 0,
-    overallRating: 'meets',
+    overallRating: 'deficient',
   }
 }
 
