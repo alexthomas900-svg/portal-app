@@ -1,8 +1,10 @@
-import type { ScholarshipData, RatingLevel } from '../../../types'
+import type { ScholarshipData, RatingLevel, DocumentFile } from '../../../types'
+import FileUpload from '../../shared/FileUpload'
 
 interface Props {
   data: ScholarshipData
   onChange: (data: ScholarshipData) => void
+  applicationId: string
 }
 
 const RATING_OPTIONS: { value: RatingLevel; label: string; score: number }[] = [
@@ -12,7 +14,7 @@ const RATING_OPTIONS: { value: RatingLevel; label: string; score: number }[] = [
   { value: 'deficient', label: 'Deficient', score: 10 },
 ]
 
-export default function ScholarshipStep({ data, onChange }: Props) {
+export default function ScholarshipStep({ data, onChange, applicationId }: Props) {
   const update = (field: keyof ScholarshipData, value: unknown) => {
     onChange({ ...data, [field]: value })
   }
@@ -27,6 +29,10 @@ export default function ScholarshipStep({ data, onChange }: Props) {
           Maximum 25 marks. Current score:{' '}
           <span className="font-semibold text-primary">{currentScore}</span>
         </p>
+      </div>
+
+      <div className="p-3 rounded-lg bg-warning-light border border-yellow-200 text-sm text-warning">
+        <strong>Note:</strong> Scholarly activity starts as <em>Deficient</em> and is upgraded based on verified publications, conference proofs, and other evidence uploaded below.
       </div>
 
       <div className="space-y-4">
@@ -92,6 +98,35 @@ export default function ScholarshipStep({ data, onChange }: Props) {
               rows={3}
             />
           </div>
+        </div>
+
+        {/* Section-level evidence uploads */}
+        <div className="space-y-3 pt-2 border-t border-border">
+          <p className="text-xs font-semibold text-text-secondary uppercase tracking-wide">Evidence Documents</p>
+          <FileUpload
+            applicationId={applicationId}
+            category="publicationProofs"
+            label="Publication PDFs / Acceptance Letters"
+            multiple
+            existingFiles={data.publicationProofs ?? []}
+            onUpload={(files: DocumentFile[]) => update('publicationProofs', files)}
+          />
+          <FileUpload
+            applicationId={applicationId}
+            category="conferenceProofs"
+            label="Conference Acceptance Letters / Proceedings"
+            multiple
+            existingFiles={data.conferenceProofs ?? []}
+            onUpload={(files: DocumentFile[]) => update('conferenceProofs', files)}
+          />
+          <FileUpload
+            applicationId={applicationId}
+            category="grantDocuments"
+            label="Grant Award Letters / Editorial Appointment Letters"
+            multiple
+            existingFiles={data.grantDocuments ?? []}
+            onUpload={(files: DocumentFile[]) => update('grantDocuments', files)}
+          />
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

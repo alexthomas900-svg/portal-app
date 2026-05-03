@@ -1,8 +1,10 @@
-import type { EffortsToImprove, RatingLevel } from '../../../types'
+import type { EffortsToImprove, RatingLevel, DocumentFile } from '../../../types'
+import FileUpload from '../../shared/FileUpload'
 
 interface Props {
   data: EffortsToImprove
   onChange: (data: EffortsToImprove) => void
+  applicationId: string
 }
 
 const RATING_OPTIONS: { value: RatingLevel; label: string; score: number }[] = [
@@ -19,7 +21,7 @@ function ratingFromHours(hours: number): RatingLevel {
   return 'deficient'
 }
 
-export default function EffortsToImproveStep({ data, onChange }: Props) {
+export default function EffortsToImproveStep({ data, onChange, applicationId }: Props) {
   const update = (field: keyof EffortsToImprove, value: unknown) => {
     onChange({ ...data, [field]: value })
   }
@@ -37,6 +39,10 @@ export default function EffortsToImproveStep({ data, onChange }: Props) {
       </div>
 
       <div className="space-y-4">
+        <div className="p-3 rounded-lg bg-warning-light border border-yellow-200 text-sm text-warning">
+          <strong>Note:</strong> Professional development starts as <em>Deficient</em>. Upload evidence in each subsection — criteria-based scoring replaces narrative-only evaluation.
+        </div>
+
         <div>
           <label className="block text-sm font-medium text-text mb-1.5">Teaching Innovation</label>
           <textarea
@@ -81,6 +87,16 @@ export default function EffortsToImproveStep({ data, onChange }: Props) {
             placeholder="Describe your reflective teaching practices..."
             rows={3}
           />
+          <div className="mt-2">
+            <FileUpload
+              applicationId={applicationId}
+              category="reflectiveEssays"
+              label="Reflective Practice Artifacts (essays, journals, self-assessments)"
+              multiple
+              existingFiles={data.reflectiveEssays ?? []}
+              onUpload={(files: DocumentFile[]) => update('reflectiveEssays', files)}
+            />
+          </div>
         </div>
 
         <div>
@@ -113,6 +129,27 @@ export default function EffortsToImproveStep({ data, onChange }: Props) {
             onChange={(e) => update('cpdsUndertaken', e.target.value)}
             placeholder="List continuing professional development activities..."
             rows={3}
+          />
+          <div className="mt-2">
+            <FileUpload
+              applicationId={applicationId}
+              category="workshopAttendance"
+              label="Workshop / Training Attendance Records"
+              multiple
+              existingFiles={data.workshopAttendance ?? []}
+              onUpload={(files: DocumentFile[]) => update('workshopAttendance', files)}
+            />
+          </div>
+        </div>
+
+        <div>
+          <FileUpload
+            applicationId={applicationId}
+            category="trainingCertificates"
+            label="Training Certificates and Credentials"
+            multiple
+            existingFiles={data.trainingCertificates ?? []}
+            onUpload={(files: DocumentFile[]) => update('trainingCertificates', files)}
           />
         </div>
 

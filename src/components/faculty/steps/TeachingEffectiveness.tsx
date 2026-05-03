@@ -1,8 +1,10 @@
-import type { TeachingEffectiveness, RatingLevel } from '../../../types'
+import type { TeachingEffectiveness, RatingLevel, DocumentFile } from '../../../types'
+import FileUpload from '../../shared/FileUpload'
 
 interface Props {
   data: TeachingEffectiveness
   onChange: (data: TeachingEffectiveness) => void
+  applicationId: string
 }
 
 const RATING_OPTIONS: { value: RatingLevel; label: string; score: number }[] = [
@@ -12,7 +14,7 @@ const RATING_OPTIONS: { value: RatingLevel; label: string; score: number }[] = [
   { value: 'deficient', label: 'Deficient', score: 18 },
 ]
 
-export default function TeachingStep({ data, onChange }: Props) {
+export default function TeachingStep({ data, onChange, applicationId }: Props) {
   const update = (field: keyof TeachingEffectiveness, value: unknown) => {
     onChange({ ...data, [field]: value })
   }
@@ -30,6 +32,32 @@ export default function TeachingStep({ data, onChange }: Props) {
       </div>
 
       <div className="space-y-4">
+        <div className="p-3 rounded-lg bg-warning-light border border-yellow-200 text-sm text-warning">
+          <strong>Note:</strong> Teaching effectiveness starts as <em>Deficient</em> and is upgraded only when evidence is reviewed. Upload supporting documents in each subsection below.
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-text mb-1.5">
+            Bloom's Taxonomy — SLO Alignment
+          </label>
+          <textarea
+            value={data.bloomAlignment}
+            onChange={(e) => update('bloomAlignment', e.target.value)}
+            placeholder="Describe how your Student Learning Outcomes align with Bloom's Taxonomy levels (Remember, Understand, Apply, Analyse, Evaluate, Create)..."
+            rows={3}
+          />
+          <div className="mt-2">
+            <FileUpload
+              applicationId={applicationId}
+              category="sloDocuments"
+              label="SLO Documents (course specs, learning outcome mappings)"
+              multiple
+              existingFiles={data.sloDocuments ?? []}
+              onUpload={(files: DocumentFile[]) => update('sloDocuments', files)}
+            />
+          </div>
+        </div>
+
         <div>
           <label className="block text-sm font-medium text-text mb-1.5">
             Fink's Taxonomy Alignment
@@ -40,6 +68,16 @@ export default function TeachingStep({ data, onChange }: Props) {
             placeholder="Describe how your teaching aligns with Fink's Taxonomy of Significant Learning..."
             rows={3}
           />
+          <div className="mt-2">
+            <FileUpload
+              applicationId={applicationId}
+              category="syllabi"
+              label="Syllabi / Course Outlines"
+              multiple
+              existingFiles={data.syllabi ?? []}
+              onUpload={(files: DocumentFile[]) => update('syllabi', files)}
+            />
+          </div>
         </div>
 
         <div>
@@ -52,6 +90,16 @@ export default function TeachingStep({ data, onChange }: Props) {
             placeholder="Describe your assessment strategies that promote higher-order thinking..."
             rows={3}
           />
+          <div className="mt-2">
+            <FileUpload
+              applicationId={applicationId}
+              category="assessmentSamples"
+              label="Assessment Samples (exams, rubrics, project briefs)"
+              multiple
+              existingFiles={data.assessmentSamples ?? []}
+              onUpload={(files: DocumentFile[]) => update('assessmentSamples', files)}
+            />
+          </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -96,6 +144,17 @@ export default function TeachingStep({ data, onChange }: Props) {
               step={0.1}
             />
           </div>
+        </div>
+
+        <div className="mt-2">
+          <FileUpload
+            applicationId={applicationId}
+            category="studentFeedbackDocs"
+            label="Student Feedback / Evaluation Documents"
+            multiple
+            existingFiles={data.studentFeedbackDocs ?? []}
+            onUpload={(files: DocumentFile[]) => update('studentFeedbackDocs', files)}
+          />
         </div>
 
         <div>
