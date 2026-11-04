@@ -6,6 +6,14 @@ import { getMyApplications, createApplication } from '../../services/application
 import StatusBadge from '../shared/StatusBadge'
 import { formatApplicationTypeLabel, formatPromotionLabel, type Application } from '../../types'
 
+const toMillis = (v: unknown): number => {
+  if (!v) return 0
+  const t = new Date(v as string | number | Date).getTime()
+  if (!Number.isNaN(t)) return t
+  const seconds = (v as { seconds?: number }).seconds
+  return typeof seconds === 'number' ? seconds * 1000 : 0
+}
+
 export default function FacultyDashboard() {
   const { user, profile } = useAuth()
   const [applications, setApplications] = useState<Application[]>([])
@@ -89,7 +97,7 @@ export default function FacultyDashboard() {
           a.applicationType === c.applicationType &&
           (c.applicationType !== 'promotion' || a.promotionType === c.promotionType),
       )
-      .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))
+      .sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt))
 
   const stats = {
     total: applications.length,
