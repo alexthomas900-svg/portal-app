@@ -6,6 +6,14 @@ import { getMyApplications, createApplication } from '../../services/application
 import StatusBadge from '../shared/StatusBadge'
 import { formatApplicationTypeLabel, formatPromotionLabel, type Application } from '../../types'
 
+const toMillis = (v: unknown): number => {
+  if (!v) return 0
+  const t = new Date(v as string | number | Date).getTime()
+  if (!Number.isNaN(t)) return t
+  const seconds = (v as { seconds?: number }).seconds
+  return typeof seconds === 'number' ? seconds * 1000 : 0
+}
+
 export default function FacultyDashboard() {
   const { user, profile } = useAuth()
   const [applications, setApplications] = useState<Application[]>([])
@@ -43,11 +51,53 @@ export default function FacultyDashboard() {
     }
   }, [user])
 
-  const handleNewApplication = async (applicationType: Application['applicationType']) => {
+  const handleNewApplication = async (
+    applicationType: Application['applicationType'],
+    promotionType: Application['promotionType'] = 'associate_professor',
+  ) => {
     if (!user || !profile) return
-    const app = await createApplication(user.uid, profile.displayName, profile.email, applicationType)
+    const app = await createApplication(user.uid, profile.displayName, profile.email, applicationType, promotionType)
     navigate(`/applications/${app.id}/edit`)
   }
+
+  const cards: {
+    key: string
+    title: string
+    purpose: string
+    applicationType: Application['applicationType']
+    promotionType: Application['promotionType']
+  }[] = [
+    {
+      key: 'annual',
+      title: 'Annual Faculty Self-Evaluation',
+      purpose: 'Annual reporting of teaching, research, professional development, scholarship and institutional contributions.',
+      applicationType: 'self_evaluation',
+      promotionType: 'associate_professor',
+    },
+    {
+      key: 'associate',
+      title: 'Promotion to Associate Professor',
+      purpose: "Application for promotion from your current designation to Associate Professor.",
+      applicationType: 'promotion',
+      promotionType: 'associate_professor',
+    },
+    {
+      key: 'professor',
+      title: 'Promotion to Professor',
+      purpose: 'Application for promotion to Professor.',
+      applicationType: 'promotion',
+      promotionType: 'full_professor',
+    },
+  ]
+
+  const appsForCard = (c: (typeof cards)[number]) =>
+    applications
+      .filter(
+        (a) =>
+          a.applicationType === c.applicationType &&
+          (c.applicationType !== 'promotion' || a.promotionType === c.promotionType),
+      )
+      .sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt))
 
   const stats = {
     total: applications.length,
@@ -87,7 +137,7 @@ export default function FacultyDashboard() {
           Welcome, {profile?.displayName?.split(' ')[0]}
         </h1>
         <p className="text-text-secondary mt-1">
-          Manage your promotion, contract renewal, and self-evaluation workflows.
+          Manage your annual self-evaluation and promotion applications.
         </p>
       </div>
 
@@ -113,24 +163,49 @@ export default function FacultyDashboard() {
         ))}
       </div>
 
-      {/* Actions */}
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold text-text">My Applications</h2>
-        <div className="flex items-center gap-2 flex-wrap justify-end">
-          <button onClick={() => handleNewApplication('promotion')} className="btn-primary btn-sm">
-            <Plus className="w-4 h-4" />
-            New Promotion
-          </button>
-          <button onClick={() => handleNewApplication('contract_renewal')} className="btn-secondary btn-sm">
-            <Plus className="w-4 h-4" />
-            Contract Renewal
-          </button>
-          <button onClick={() => handleNewApplication('self_evaluation')} className="btn-secondary btn-sm">
-            <Plus className="w-4 h-4" />
-            Self-Evaluation
-          </button>
-        </div>
+      {/* Application cards */}
+      <h2 className="text-lg font-semibold text-text mb-4">My Applications</h2>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        {cards.map((c) => {
+          const history = appsForCard(c)
+          const current = history[0]
+          const isDraft = current?.status === 'draft'
+          return (
+            <div key={c.key} className="card p-5 flex flex-col">
+              <h3 className="text-base font-semibold text-text mb-1">{c.title}</h3>
+              <p className="text-xs text-text-secondary mb-4">{c.purpose}</p>
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-xs text-text-secondary">Status:</span>
+                {current ? <StatusBadge status={current.status} /> : <span className="text-xs text-text-dim">Not started</span>}
+              </div>
+              <p className="text-xs text-text-secondary mb-1">
+                Reference: {current ? current.id.slice(0, 8).toUpperCase() : '—'}
+              </p>
+              <p className="text-xs text-text-secondary mb-4">Previous applications: {Math.max(history.length - 1, 0)}</p>
+              <div className="mt-auto flex gap-2 flex-wrap">
+                {(!current || (!isDraft && current.status === 'decision_made')) && (
+                  <button onClick={() => handleNewApplication(c.applicationType, c.promotionType)} className="btn-primary btn-sm">
+                    <Plus className="w-4 h-4" />
+                    Start Application
+                  </button>
+                )}
+                {isDraft && (
+                  <button onClick={() => navigate(`/applications/${current.id}/edit`)} className="btn-primary btn-sm">
+                    Continue Application
+                  </button>
+                )}
+                {current && !isDraft && (
+                  <button onClick={() => navigate(`/applications/${current.id}`)} className="btn-secondary btn-sm">
+                    View Submitted Application
+                  </button>
+                )}
+              </div>
+            </div>
+          )
+        })}
       </div>
+
+      <h2 className="text-lg font-semibold text-text mb-4">Application History</h2>
 
       {/* Applications list */}
       {applications.length === 0 ? (
@@ -138,12 +213,8 @@ export default function FacultyDashboard() {
           <FileText className="w-12 h-12 text-text-dim mx-auto mb-4" />
           <h3 className="text-lg font-medium text-text mb-2">No applications yet</h3>
           <p className="text-text-secondary mb-6">
-            Start by creating a promotion, contract renewal, or self-evaluation application.
+            Start one of the applications above.
           </p>
-          <button onClick={() => handleNewApplication('promotion')} className="btn-primary">
-            <Plus className="w-4 h-4" />
-            Create Promotion Application
-          </button>
         </div>
       ) : (
         <div className="space-y-3">

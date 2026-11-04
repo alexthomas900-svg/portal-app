@@ -57,6 +57,7 @@ function buildEmptyApplication(
   name: string,
   email: string,
   applicationType: Application['applicationType'],
+  promotionType: Application['promotionType'] = 'associate_professor',
 ): Application {
   const now = new Date().toISOString()
 
@@ -66,7 +67,7 @@ function buildEmptyApplication(
     applicantName: name,
     applicantEmail: email,
     applicationType,
-    promotionType: 'associate_professor',
+    promotionType,
     status: 'draft',
     personalInfo: {
       fullName: name,
@@ -79,7 +80,7 @@ function buildEmptyApplication(
       dateOfBirth: '',
       dateOfJoining: '',
       applicationType,
-      promotionType: 'associate_professor',
+      promotionType,
     },
     qualifications: [],
     experience: [],
@@ -173,12 +174,13 @@ export async function createApplication(
   name: string,
   email: string,
   applicationType: Application['applicationType'] = 'promotion',
+  promotionType: Application['promotionType'] = 'associate_professor',
 ): Promise<Application> {
   try {
-    return await apiPost('/api/applications', { applicationType })
+    return await apiPost('/api/applications', { applicationType, promotionType })
   } catch {
     const ref = doc(collection(db, 'applications'))
-    const application = buildEmptyApplication(ref.id, uid, name, email, applicationType)
+    const application = buildEmptyApplication(ref.id, uid, name, email, applicationType, promotionType)
     await setDoc(
       ref,
       stripUndefined({

@@ -54,13 +54,14 @@ function buildEmptyApplication(
   name: string,
   email: string,
   applicationType: string,
+  promotionType = 'associate_professor',
 ) {
   return {
     applicantUid: uid,
     applicantName: name,
     applicantEmail: email,
     applicationType,
-    promotionType: 'associate_professor',
+    promotionType,
     status: 'draft',
     personalInfo: {
       fullName: name,
@@ -73,7 +74,7 @@ function buildEmptyApplication(
       dateOfBirth: '',
       dateOfJoining: '',
       applicationType,
-      promotionType: 'associate_professor',
+      promotionType,
     },
     qualifications: [],
     experience: [],
@@ -136,8 +137,9 @@ function buildEmptyApplication(
 // POST /api/applications — create new application
 router.post('/', requireAuth, async (req: AuthRequest, res) => {
   try {
-    const { applicationType } = req.body as { applicationType?: string }
+    const { applicationType, promotionType } = req.body as { applicationType?: string; promotionType?: string }
     const type = applicationType || 'promotion'
+    const promoType = promotionType === 'full_professor' ? 'full_professor' : 'associate_professor'
 
     // Get user profile for name/email
     const profileSnap = await db.collection('users').doc(req.uid!).get()
@@ -150,7 +152,7 @@ router.post('/', requireAuth, async (req: AuthRequest, res) => {
     const ref = db.collection('applications').doc()
     const app = {
       id: ref.id,
-      ...buildEmptyApplication(req.uid!, profile.displayName, profile.email, type),
+      ...buildEmptyApplication(req.uid!, profile.displayName, profile.email, type, promoType),
     }
     await ref.set(app)
     res.json(app)
