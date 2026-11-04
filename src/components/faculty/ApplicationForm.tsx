@@ -63,18 +63,23 @@ export default function ApplicationForm() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [formError, setFormError] = useState('')
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     if (id) {
       getApplication(id).then((app) => {
+        if (app && app.status !== 'draft') {
+          navigate(`/applications/${app.id}`, { replace: true })
+          return
+        }
         setApplication(app?.applicationType === 'self_evaluation' && !app.annualEvaluation
           ? { ...app, annualEvaluation: emptyAnnualEvaluation() }
           : app)
         setLoading(false)
       })
     }
-  }, [id])
+  }, [id, navigate])
 
   const handleSave = useCallback(async () => {
     if (!application) return
@@ -91,10 +96,13 @@ export default function ApplicationForm() {
   const handleSubmit = async () => {
     if (!application || !application.declaration) return
     setSubmitting(true)
+    setFormError('')
     try {
       await saveApplication(application)
       await submitApplication(application.id)
       navigate('/applications')
+    } catch (submitError) {
+      setFormError(submitError instanceof Error ? submitError.message : 'Failed to submit application.')
     } finally {
       setSubmitting(false)
     }
@@ -326,6 +334,7 @@ export default function ApplicationForm() {
       )}
 
       {/* Step content */}
+      {formError && <p role="alert" className="mb-4 p-3 rounded bg-danger-light text-danger text-sm">{formError}</p>}
       <div className="card p-5 sm:p-6 mb-6">{renderStep()}</div>
 
       {/* Navigation */}

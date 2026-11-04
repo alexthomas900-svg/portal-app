@@ -21,6 +21,15 @@ const defaultDocuments: Record<ApplicationType, { key: string; label: string }[]
     { key: 'phdDegree', label: 'PhD degree' },
     { key: 'phdTranscript', label: 'PhD transcript' },
     { key: 'hecAttestation', label: 'HEC attestation' },
+    { key: 'mastersDegree', label: 'MPhil/MS degree' },
+    { key: 'mastersTranscript', label: 'MPhil/MS transcript' },
+    { key: 'selfEvaluationForm', label: 'Self-evaluation form' },
+    { key: 'chairEvaluation', label: "Chair's evaluation" },
+    { key: 'deanEvaluation', label: "Dean's evaluation" },
+    { key: 'courseOutlines', label: 'Course outlines' },
+    { key: 'assignments', label: 'Assignments' },
+    { key: 'teachingSupportDocs', label: 'Teaching support documents' },
+    { key: 'abstractsPdf', label: 'Paper abstracts' },
     { key: 'updatedCV', label: 'Updated CV' },
   ],
   contract_renewal: [
@@ -36,7 +45,8 @@ function isComplete(application: Application, key: string): boolean {
   if (key === 'annualEvalDocs') return Boolean(application.annualEvaluation?.supportingDocuments?.length)
   const documents = application.documents ?? {}
   const value = (documents as unknown as Record<string, unknown>)[key]
-  return Array.isArray(value) ? value.length > 0 : Boolean(value)
+  if (Array.isArray(value)) return value.length >= (['courseOutlines', 'assignments', 'teachingSupportDocs'].includes(key) ? 2 : 1)
+  return Boolean(value)
 }
 
 function getCompletion(application: Application, requiredDocs: { key: string; label: string }[]): number {
@@ -116,7 +126,7 @@ export default function FacultyDashboard() {
   ) => {
     if (!user || !profile) return
     try {
-      const app = await createApplication(user.uid, profile.displayName, profile.email, applicationType, promotionType, cycleId)
+      const app = await createApplication(applicationType, promotionType, cycleId)
       navigate(`/applications/${app.id}/edit`)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to create an application.')
@@ -182,6 +192,10 @@ export default function FacultyDashboard() {
               selfEvaluationForm: 'Self-evaluation form',
               chairEvaluation: "Chair's evaluation",
               deanEvaluation: "Dean's evaluation",
+              courseOutlines: 'Course outlines',
+              assignments: 'Assignments',
+              teachingSupportDocs: 'Teaching support documents',
+              abstractsPdf: 'Paper abstracts',
               updatedCV: 'Updated CV',
               annualEvalDocs: 'Supporting evidence',
             }),
@@ -221,6 +235,14 @@ export default function FacultyDashboard() {
                     <button onClick={() => navigate(`/applications/${latest.id}/edit`)} className="btn-primary btn-sm w-full">Continue Application</button>
                   ) : (
                     <button onClick={() => navigate(`/applications/${latest.id}`)} className="btn-secondary btn-sm w-full">View Submitted Application</button>
+                  )}
+                  {open && cycle && latest.cycleId !== cycle.id && (
+                    <button
+                      onClick={() => handleNewApplication(card.applicationType, card.promotionType ?? 'associate_professor', cycle.id)}
+                      className="btn-primary btn-sm w-full mt-2"
+                    >
+                      <Plus className="w-4 h-4" /> Start Current Cycle Application
+                    </button>
                   )}
                   {matchingApps(card.applicationType, card.promotionType).length > 1 && (
                     <p className="text-[11px] text-text-dim">Previous applications: {matchingApps(card.applicationType, card.promotionType).length - 1}</p>

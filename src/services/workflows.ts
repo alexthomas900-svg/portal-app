@@ -17,10 +17,22 @@ export interface WorkflowNotification {
   read: boolean
 }
 
+export interface AuditEvent {
+  id: string
+  actorUid: string
+  action: string
+  applicationId?: string
+  createdAt: string | { seconds?: number; _seconds?: number }
+  details: Record<string, unknown>
+}
+
 export interface ApplicationAssignment {
   internalReviewer1Uid: string
   internalReviewer2Uid: string
   externalReviewerUid: string | null
+  internalReviewer1Status?: 'assigned' | 'in_progress' | 'submitted'
+  internalReviewer2Status?: 'assigned' | 'in_progress' | 'submitted'
+  externalReviewerStatus?: 'assigned' | 'in_progress' | 'submitted'
 }
 
 export interface CommitteeApplication {
@@ -34,6 +46,16 @@ export interface CommitteeApplication {
 
 export interface CommitteeRecord {
   application: Application
+  internalReviews: {
+    reviewerName: string
+    overallComments: string
+    recommendation: string
+  }[]
+  externalReviews: {
+    reviewerName: string
+    researchProductivity: string
+    overallEvaluation: string
+  }[]
   decision: null | {
     decision: CommitteeDecision
     justification: string
@@ -41,6 +63,13 @@ export interface CommitteeRecord {
     observations: string
     authorized: boolean
   }
+}
+
+export interface ConflictDeclaration {
+  id: string
+  explanation: string
+  declaredAt: string
+  resolved: boolean
 }
 
 export function getApplicationCycles(): Promise<ApplicationCycle[]> {
@@ -61,6 +90,10 @@ export function getReviewers(): Promise<ReviewerAccount[]> {
 
 export function assignReviewers(applicationId: string, assignments: ApplicationAssignment): Promise<{ assignments: ApplicationAssignment }> {
   return apiPut(`/api/workflows/applications/${applicationId}/assignments`, assignments)
+}
+
+export function getConflictDeclarations(applicationId: string): Promise<ConflictDeclaration[]> {
+  return apiGet(`/api/workflows/applications/${applicationId}/conflicts`)
 }
 
 export function declareConflict(applicationId: string, explanation: string): Promise<{ success: boolean }> {
@@ -96,4 +129,20 @@ export function authorizeCommitteeDecision(applicationId: string): Promise<{ suc
 
 export function getNotifications(): Promise<WorkflowNotification[]> {
   return apiGet('/api/workflows/notifications')
+}
+
+export function recordDocumentUpload(applicationId: string, category: string, fileName: string): Promise<{ success: boolean }> {
+  return apiPost('/api/workflows/documents/audit', { applicationId, category, fileName })
+}
+
+export function sendApplicantNotification(
+  applicationId: string,
+  type: 'clarification_request' | 'missing_documents' | 'application_update',
+  message: string,
+): Promise<{ success: boolean }> {
+  return apiPost(`/api/workflows/applications/${applicationId}/notifications`, { type, message })
+}
+
+export function getAuditEvents(): Promise<AuditEvent[]> {
+  return apiGet('/api/workflows/audit')
 }

@@ -354,8 +354,18 @@ export interface Application {
   applicationType: ApplicationType
   promotionType: PromotionType
   cycleId?: string
+  academicYear?: string
   annualEvaluation?: AnnualEvaluationData
   snapshotId?: string
+  assignments?: {
+    internalReviewer1Uid: string
+    internalReviewer2Uid: string
+    externalReviewerUid?: string | null
+    internalReviewer1Status?: 'assigned' | 'in_progress' | 'submitted'
+    internalReviewer2Status?: 'assigned' | 'in_progress' | 'submitted'
+    externalReviewerStatus?: 'assigned' | 'in_progress' | 'submitted'
+  }
+  finalDecision?: string
   conflictDeclared?: boolean
   conflictExplanation?: string
   status: ApplicationStatus
@@ -415,6 +425,8 @@ export interface InternalReview {
 
   overallComments: string
   recommendation: ReviewRecommendation
+  status?: 'draft' | 'submitted'
+  submittedAt?: string
 
   createdAt: string
   updatedAt: string
@@ -432,6 +444,8 @@ export interface ExternalReview {
   researchProductivity: string
   visibilityContribution: string
   overallEvaluation: ExternalRecommendation
+  status?: 'draft' | 'submitted'
+  submittedAt?: string
 
   createdAt: string
   updatedAt: string

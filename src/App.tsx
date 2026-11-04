@@ -23,6 +23,7 @@ import ExternalReviewForm from './components/reviewer/ExternalReviewForm'
 // Admin
 import AdminDashboard from './components/admin/AdminDashboard'
 import UserManagement from './components/admin/UserManagement'
+import CommitteePortal from './components/reviewer/CommitteePortal'
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
@@ -69,6 +70,7 @@ function DashboardRouter() {
   if (role === 'admin') return <AdminDashboard />
   if (role === 'internal_reviewer') return <InternalDashboard />
   if (role === 'external_reviewer') return <ExternalDashboard />
+  if (role === 'committee_member') return <CommitteePortal />
   return <FacultyDashboard />
 }
 
@@ -162,6 +164,23 @@ export default function App() {
           element={
             <RequireRole role="external_reviewer">
               <ExternalReviewForm />
+            </RequireRole>
+          }
+        />
+
+        <Route
+          path="/committee"
+          element={
+            <RequireRole role={['committee_member', 'admin']}>
+              <CommitteePortal />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="/committee/:id"
+          element={
+            <RequireRole role={['committee_member', 'admin']}>
+              <CommitteePortal />
             </RequireRole>
           }
         />

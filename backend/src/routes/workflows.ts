@@ -65,6 +65,12 @@ router.post('/cycles', requireAuth, async (req: AuthRequest, res) => {
     }
     const ref = await db.collection('applicationCycles').add(cycle)
     await recordAudit(req.uid!, 'cycle_created', undefined, { cycleId: ref.id })
+    const faculty = await db.collection('users').where('role', '==', 'faculty').get()
+    await Promise.all(faculty.docs.map((user) => createNotification(
+      user.id,
+      'application_opening',
+      `${String(applicationType).replaceAll('_', ' ')} applications are scheduled to open ${new Date(opensAt).toLocaleDateString()} for ${academicYear}.`,
+    )))
     res.status(201).json({ id: ref.id, ...cycle })
   } catch {
     res.status(500).json({ error: 'Failed to create application cycle' })
@@ -148,6 +154,11 @@ router.put('/applications/:applicationId/assignments', requireAuth, async (req: 
       return
     }
     const application = applicationSnapshot.data()!
+    if (application.applicationType === 'promotion' && application.promotionType === 'full_professor' &&
+      typeof externalReviewerUid !== 'string') {
+      res.status(400).json({ error: 'A Professor application requires an external reviewer' })
+      return
+    }
     if (externalReviewerUid && (application.applicationType !== 'promotion' || application.promotionType !== 'full_professor')) {
       res.status(400).json({ error: 'External reviewers are only available for Professor applications' })
       return
@@ -162,13 +173,51 @@ router.put('/applications/:applicationId/assignments', requireAuth, async (req: 
       res.status(400).json({ error: 'Reviewer assignments must match the selected account roles' })
       return
     }
+    const conflicts = await applicationRef.collection('conflicts').get()
+    const assignedUids = [internalReviewer1Uid, internalReviewer2Uid, externalReviewerUid].filter(
+      (uid): uid is string => typeof uid === 'string' && Boolean(uid),
+    )
+    if (conflicts.docs.some((conflict) =>
+      conflict.data().resolved !== true && assignedUids.includes(String(conflict.data().reviewerUid)),
+    )) {
+      res.status(409).json({ error: 'A reviewer with an unresolved conflict cannot be assigned' })
+      return
+    }
+    const previous = application.assignments as Record<string, unknown> | undefined
+    const normalizedExternalUid = typeof externalReviewerUid === 'string' && externalReviewerUid
+      ? externalReviewerUid
+      : null
+    const assignmentChanged = previous?.internalReviewer1Uid !== internalReviewer1Uid ||
+      previous?.internalReviewer2Uid !== internalReviewer2Uid ||
+      (previous?.externalReviewerUid ?? null) !== normalizedExternalUid
+    if (assignmentChanged && application.status === 'decision_made') {
+      res.status(409).json({ error: 'Reviewer assignments cannot change after a decision is recorded' })
+      return
+    }
     const assignments = {
       internalReviewer1Uid,
       internalReviewer2Uid,
-      externalReviewerUid: typeof externalReviewerUid === 'string' && externalReviewerUid ? externalReviewerUid : null,
+      externalReviewerUid: normalizedExternalUid,
+      internalReviewer1Status: previous?.internalReviewer1Uid === internalReviewer1Uid
+        ? previous?.internalReviewer1Status ?? 'assigned'
+        : 'assigned',
+      internalReviewer2Status: previous?.internalReviewer2Uid === internalReviewer2Uid
+        ? previous?.internalReviewer2Status ?? 'assigned'
+        : 'assigned',
+      ...(normalizedExternalUid ? {
+        externalReviewerStatus: previous?.externalReviewerUid === normalizedExternalUid
+          ? previous?.externalReviewerStatus ?? 'assigned'
+          : 'assigned',
+      } : {}),
       updatedAt: new Date().toISOString(),
     }
-    await applicationRef.update({ assignments, updatedAt: FieldValue.serverTimestamp() })
+    await applicationRef.update({
+      assignments,
+      ...(application.status === 'submitted' || assignmentChanged && application.status === 'reviewed'
+        ? { status: 'under_review' }
+        : {}),
+      updatedAt: FieldValue.serverTimestamp(),
+    })
     await recordAudit(req.uid!, 'reviewers_assigned', req.params.applicationId, {
       internalReviewer1Uid,
       internalReviewer2Uid,
@@ -182,6 +231,19 @@ router.put('/applications/:applicationId/assignments', requireAuth, async (req: 
     res.json({ assignments })
   } catch {
     res.status(500).json({ error: 'Failed to assign reviewers' })
+  }
+})
+
+router.get('/applications/:applicationId/conflicts', requireAuth, async (req: AuthRequest, res) => {
+  try {
+    if ((await roleOf(req.uid!)) !== 'admin') {
+      res.status(403).json({ error: 'Admin access required' })
+      return
+    }
+    const snapshot = await db.collection('applications').doc(req.params.applicationId).collection('conflicts').get()
+    res.json(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })))
+  } catch {
+    res.status(500).json({ error: 'Failed to fetch conflict declarations' })
   }
 })
 
@@ -221,6 +283,57 @@ router.post('/applications/:applicationId/conflicts', requireAuth, async (req: A
   }
 })
 
+router.post('/applications/:applicationId/notifications', requireAuth, async (req: AuthRequest, res) => {
+  try {
+    if ((await roleOf(req.uid!)) !== 'admin') {
+      res.status(403).json({ error: 'Admin access required' })
+      return
+    }
+    const application = await db.collection('applications').doc(req.params.applicationId).get()
+    if (!application.exists || typeof application.data()?.applicantUid !== 'string') {
+      res.status(404).json({ error: 'Application not found' })
+      return
+    }
+    const { message, type } = req.body as { message?: string; type?: string }
+    if (!message?.trim() || message.length > 1000 ||
+      !['clarification_request', 'missing_documents', 'application_update'].includes(String(type))) {
+      res.status(400).json({ error: 'A supported notification type and message of 1,000 characters or fewer are required' })
+      return
+    }
+    const recipientUid = application.data()!.applicantUid as string
+    await createNotification(recipientUid, type!, message.trim(), req.params.applicationId)
+    await recordAudit(req.uid!, 'applicant_notification_sent', req.params.applicationId, { type })
+    res.json({ success: true })
+  } catch {
+    res.status(500).json({ error: 'Failed to send applicant notification' })
+  }
+})
+
+router.post('/documents/audit', requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const { applicationId, category, fileName } = req.body as {
+      applicationId?: string
+      category?: string
+      fileName?: string
+    }
+    if (typeof applicationId !== 'string' || typeof category !== 'string' || typeof fileName !== 'string' ||
+      fileName.length > 255 || category.length > 100) {
+      res.status(400).json({ error: 'A valid application and document description are required' })
+      return
+    }
+    const application = await db.collection('applications').doc(applicationId).get()
+    if (!application.exists || application.data()?.applicantUid !== req.uid ||
+      (await roleOf(req.uid!)) !== 'faculty' || application.data()?.status !== 'draft') {
+      res.status(403).json({ error: 'Only the owner of a draft application may upload documents' })
+      return
+    }
+    await recordAudit(req.uid!, 'document_uploaded_or_replaced', applicationId, { category, fileName })
+    res.json({ success: true })
+  } catch {
+    res.status(500).json({ error: 'Failed to record document upload' })
+  }
+})
+
 router.get('/applications/:applicationId/committee', requireAuth, async (req: AuthRequest, res) => {
   try {
     if (!['admin', 'committee_member'].includes(String(await roleOf(req.uid!)))) {
@@ -233,11 +346,29 @@ router.get('/applications/:applicationId/committee', requireAuth, async (req: Au
       return
     }
     const application = snapshot.data()!
+    if (!['reviewed', 'decision_made'].includes(String(application.status))) {
+      res.status(404).json({ error: 'Reviewed application not found' })
+      return
+    }
+    const assignments = application.assignments as Record<string, unknown> | undefined
     const decisionSnapshot = await db.collection('committeeDecisions').doc(req.params.applicationId).get()
+    const [internalReviews, externalReviews] = await Promise.all([
+      db.collection('applications').doc(req.params.applicationId).collection('internalReviews').get(),
+      application.applicationType === 'promotion' && application.promotionType === 'full_professor'
+        ? db.collection('applications').doc(req.params.applicationId).collection('externalReviews').get()
+        : Promise.resolve(null),
+    ])
+    const internalReviewerUids = [assignments?.internalReviewer1Uid, assignments?.internalReviewer2Uid]
     await recordAudit(req.uid!, 'confidential_application_accessed', req.params.applicationId)
     res.json({
       application,
       decision: decisionSnapshot.exists ? decisionSnapshot.data() : null,
+      internalReviews: internalReviews.docs
+        .map((doc) => doc.data())
+        .filter((review) => review.status === 'submitted' && internalReviewerUids.includes(review.reviewerUid)),
+      externalReviews: externalReviews?.docs
+        .map((doc) => doc.data())
+        .filter((review) => review.status === 'submitted' && review.reviewerUid === assignments?.externalReviewerUid) ?? [],
     })
   } catch {
     res.status(500).json({ error: 'Failed to fetch committee record' })

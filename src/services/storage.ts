@@ -1,6 +1,7 @@
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { storage } from '../firebase'
 import type { DocumentFile } from '../types'
+import { recordDocumentUpload } from './workflows'
 
 export async function uploadDocument(
   applicationId: string,
@@ -12,6 +13,7 @@ export async function uploadDocument(
   const storageRef = ref(storage, path)
   await uploadBytes(storageRef, file)
   const url = await getDownloadURL(storageRef)
+  await recordDocumentUpload(applicationId, category, file.name)
   return {
     name: file.name,
     url,

@@ -1,6 +1,6 @@
 import { FileText, CheckCircle2, AlertCircle, Award, BookOpen, Users, Briefcase } from 'lucide-react'
 import type { Application } from '../../types'
-import { formatPromotionLabel, formatApplicationTypeLabel, TEACHING_SCORES, EFFORTS_SCORES, SCHOLARSHIP_SCORES, SERVICES_SCORES } from '../../types'
+import { formatPromotionLabel, formatApplicationTypeLabel } from '../../types'
 import StatusBadge from '../shared/StatusBadge'
 
 interface Props {
@@ -50,12 +50,6 @@ function RatingBadge({ rating }: { rating: string }) {
 }
 
 export default function ApplicationReview({ application }: Props) {
-  const teachingScore = TEACHING_SCORES[application.teachingEffectiveness.overallRating]
-  const effortsScore = EFFORTS_SCORES[application.effortsToImprove.overallRating]
-  const scholarshipScore = SCHOLARSHIP_SCORES[application.scholarship.overallRating]
-  const servicesScore = SERVICES_SCORES[application.services.overallRating]
-  const totalScore = teachingScore + effortsScore + scholarshipScore + servicesScore
-
   const allVerified = application.publications.every(
     (p) => p.verification?.status === 'verified' || !p.verification,
   )
@@ -72,30 +66,19 @@ export default function ApplicationReview({ application }: Props) {
         </p>
       </div>
 
-      {/* Summary card */}
-      {application.applicationType !== 'self_evaluation' && (
-        <div className="card p-5 bg-surface-alt">
-          <div className="flex flex-wrap items-center gap-3 mb-3">
-            <StatusBadge status={application.status} />
-            <span className="text-sm text-text-secondary">
-              {application.applicationType === 'promotion'
-                ? `${formatPromotionLabel(application.promotionType)} Promotion`
-                : formatApplicationTypeLabel(application.applicationType)}
-            </span>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-3">
-            <div className="text-center"><p className="text-xl font-bold text-primary">{teachingScore}</p><p className="text-xs text-text-secondary">Teaching (max 45)</p></div>
-            <div className="text-center"><p className="text-xl font-bold text-primary">{effortsScore}</p><p className="text-xs text-text-secondary">Efforts (max 10)</p></div>
-            <div className="text-center"><p className="text-xl font-bold text-primary">{scholarshipScore}</p><p className="text-xs text-text-secondary">Scholarship (max 25)</p></div>
-            <div className="text-center"><p className="text-xl font-bold text-primary">{servicesScore}</p><p className="text-xs text-text-secondary">Services (max 20)</p></div>
-          </div>
-          <div className="mt-3 pt-3 border-t border-border text-center">
-            <p className="text-sm text-text-secondary">Preliminary Self-Assessment Total</p>
-            <p className="text-2xl font-bold text-text">{totalScore} / 100</p>
-            <p className="text-xs text-text-dim mt-1">Detailed AI scoring is generated for reviewers only.</p>
-          </div>
+      <div className="card p-4 bg-surface-alt">
+        <div className="flex flex-wrap items-center gap-3">
+          <StatusBadge status={application.status} />
+          <span className="text-sm text-text-secondary">
+            {application.applicationType === 'promotion'
+              ? `${formatPromotionLabel(application.promotionType)} Promotion`
+              : formatApplicationTypeLabel(application.applicationType)}
+          </span>
         </div>
-      )}
+        <p className="text-xs text-text-dim mt-2">
+          Assessment scores and reviewer reports are confidential and are not displayed in the applicant portal.
+        </p>
+      </div>
 
       {application.applicationType === 'self_evaluation' && (
         <SectionCard title={`Annual Evaluation ${application.annualEvaluation?.evaluationYear ?? ''}`} icon={FileText}>
@@ -190,7 +173,6 @@ export default function ApplicationReview({ application }: Props) {
       <SectionCard title="Teaching Effectiveness" icon={FileText}>
         <div className="flex items-center gap-2 mb-2">
           <RatingBadge rating={application.teachingEffectiveness.overallRating} />
-          <span className="text-sm text-text-secondary">{teachingScore} / 45 marks</span>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Field label="Bloom's Taxonomy Alignment" value={application.teachingEffectiveness.bloomAlignment} />
@@ -220,7 +202,6 @@ export default function ApplicationReview({ application }: Props) {
       <SectionCard title="Efforts to Improve" icon={Briefcase}>
         <div className="flex items-center gap-2 mb-2">
           <RatingBadge rating={application.effortsToImprove.overallRating} />
-          <span className="text-sm text-text-secondary">{effortsScore} / 10 marks</span>
         </div>
         <Field label="CPD Hours" value={application.effortsToImprove.cpdHours} />
         {(application.effortsToImprove.trainingCertificates?.length || application.effortsToImprove.workshopAttendance?.length || application.effortsToImprove.reflectiveEssays?.length) ? (
@@ -234,7 +215,6 @@ export default function ApplicationReview({ application }: Props) {
       <SectionCard title="Scholarly Activity" icon={BookOpen}>
         <div className="flex items-center gap-2 mb-2">
           <RatingBadge rating={application.scholarship.overallRating} />
-          <span className="text-sm text-text-secondary">{scholarshipScore} / 25 marks</span>
         </div>
         {(application.scholarship.publicationProofs?.length || application.scholarship.conferenceProofs?.length || application.scholarship.grantDocuments?.length) ? (
           <p className="text-xs text-success">✓ Scholarly evidence documents uploaded.</p>
@@ -247,7 +227,6 @@ export default function ApplicationReview({ application }: Props) {
       <SectionCard title="Services" icon={Users}>
         <div className="flex items-center gap-2 mb-2">
           <RatingBadge rating={application.services.overallRating} />
-          <span className="text-sm text-text-secondary">{servicesScore} / 20 marks</span>
         </div>
         {(application.services.committeeLetters?.length || application.services.serviceProofs?.length) ? (
           <p className="text-xs text-success">✓ Service evidence documents uploaded.</p>

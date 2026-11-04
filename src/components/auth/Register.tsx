@@ -2,7 +2,6 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { GraduationCap, Eye, EyeOff } from 'lucide-react'
 import { registerWithEmail } from '../../services/auth'
-import type { UserRole } from '../../types'
 import { useAuth } from '../../contexts/AuthContext'
 
 export default function Register() {
@@ -10,7 +9,6 @@ export default function Register() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-  const [role, setRole] = useState<UserRole>('faculty')
   const [department, setDepartment] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
@@ -39,7 +37,7 @@ export default function Register() {
 
     setLoading(true)
     try {
-      await registerWithEmail(email, password, displayName, role, department)
+      await registerWithEmail(email, password, displayName, 'faculty', department)
       navigate('/dashboard', { replace: true })
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Registration failed'
@@ -129,14 +127,9 @@ export default function Register() {
               </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-text mb-1.5">Role</label>
-              <select value={role} onChange={(e) => setRole(e.target.value as UserRole)}>
-                <option value="faculty">Faculty Member (Applicant)</option>
-                <option value="internal_reviewer">Internal Reviewer</option>
-                <option value="external_reviewer">External Reviewer</option>
-              </select>
-            </div>
+            <p className="text-sm text-text-secondary">
+              New accounts are registered as faculty members. Reviewer and committee access is assigned by an administrator.
+            </p>
 
             <div>
               <label className="block text-sm font-medium text-text mb-1.5">Department</label>
