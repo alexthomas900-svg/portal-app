@@ -1,4 +1,12 @@
-import type { Application, ApplicationDocuments } from '../../../types'
+import type {
+  Application,
+  ApplicationDocuments,
+  TeachingEffectiveness,
+  EffortsToImprove,
+  ScholarshipData,
+  ServicesData,
+  DocumentFile,
+} from '../../../types'
 import FileUpload from '../../shared/FileUpload'
 
 interface Props {
@@ -7,6 +15,14 @@ interface Props {
   applicationType: Application['applicationType']
   promotionType: Application['promotionType']
   onChange: (data: ApplicationDocuments) => void
+  teaching: TeachingEffectiveness
+  efforts: EffortsToImprove
+  scholarship: ScholarshipData
+  services: ServicesData
+  onTeachingChange: (data: TeachingEffectiveness) => void
+  onEffortsChange: (data: EffortsToImprove) => void
+  onScholarshipChange: (data: ScholarshipData) => void
+  onServicesChange: (data: ServicesData) => void
 }
 
 export default function DocumentUploadStep({
@@ -15,6 +31,14 @@ export default function DocumentUploadStep({
   applicationType,
   promotionType,
   onChange,
+  teaching,
+  efforts,
+  scholarship,
+  services,
+  onTeachingChange,
+  onEffortsChange,
+  onScholarshipChange,
+  onServicesChange,
 }: Props) {
   const update = (field: keyof ApplicationDocuments, value: unknown) => {
     onChange({ ...data, [field]: value })
@@ -156,16 +180,6 @@ export default function DocumentUploadStep({
 
           <FileUpload
             applicationId={applicationId}
-            category="course-outlines"
-            label="Course Outlines (2 required)"
-            multiple
-            existingFiles={data.courseOutlines}
-            onUpload={(files) => update('courseOutlines', files.slice(0, 2))}
-            required
-          />
-
-          <FileUpload
-            applicationId={applicationId}
             category="assignments"
             label="Assignments (2 required)"
             multiple
@@ -215,6 +229,77 @@ export default function DocumentUploadStep({
           onUpload={(files) => update('updatedCV', files[0] || undefined)}
           required
         />
+
+        <div className="card p-4 space-y-4">
+          <h4 className="text-sm font-semibold text-text">Additional Supporting Evidence</h4>
+          <FileUpload
+            applicationId={applicationId}
+            category="assessmentSamples"
+            label="Teaching Assessment Samples"
+            existingFiles={teaching.assessmentSamples ?? []}
+            onUpload={(files: DocumentFile[]) => onTeachingChange({ ...teaching, assessmentSamples: files.slice(-1) })}
+          />
+          <FileUpload
+            applicationId={applicationId}
+            category="reflectiveEssays"
+            label="Reflective Practice Artifact"
+            existingFiles={efforts.reflectiveEssays ?? []}
+            onUpload={(files: DocumentFile[]) => onEffortsChange({ ...efforts, reflectiveEssays: files.slice(-1) })}
+          />
+          <FileUpload
+            applicationId={applicationId}
+            category="workshopAttendance"
+            label="Workshop / Training Attendance Record"
+            existingFiles={efforts.workshopAttendance ?? []}
+            onUpload={(files: DocumentFile[]) => onEffortsChange({ ...efforts, workshopAttendance: files.slice(-1) })}
+          />
+          <FileUpload
+            applicationId={applicationId}
+            category="trainingCertificates"
+            label="Training Certificate"
+            existingFiles={efforts.trainingCertificates ?? []}
+            onUpload={(files: DocumentFile[]) => onEffortsChange({ ...efforts, trainingCertificates: files.slice(-1) })}
+          />
+          {isPromotion && (
+            <>
+              <FileUpload
+                applicationId={applicationId}
+                category="publicationProofs"
+                label="Publication Proof or Acceptance Letter"
+                existingFiles={scholarship.publicationProofs ?? []}
+                onUpload={(files: DocumentFile[]) => onScholarshipChange({ ...scholarship, publicationProofs: files.slice(-1) })}
+              />
+              <FileUpload
+                applicationId={applicationId}
+                category="conferenceProofs"
+                label="Conference Proof"
+                existingFiles={scholarship.conferenceProofs ?? []}
+                onUpload={(files: DocumentFile[]) => onScholarshipChange({ ...scholarship, conferenceProofs: files.slice(-1) })}
+              />
+              <FileUpload
+                applicationId={applicationId}
+                category="grantDocuments"
+                label="Grant or Editorial Appointment Letter"
+                existingFiles={scholarship.grantDocuments ?? []}
+                onUpload={(files: DocumentFile[]) => onScholarshipChange({ ...scholarship, grantDocuments: files.slice(-1) })}
+              />
+              <FileUpload
+                applicationId={applicationId}
+                category="committeeLetters"
+                label="Committee Appointment or Board Membership Letter"
+                existingFiles={services.committeeLetters ?? []}
+                onUpload={(files: DocumentFile[]) => onServicesChange({ ...services, committeeLetters: files.slice(-1) })}
+              />
+              <FileUpload
+                applicationId={applicationId}
+                category="serviceProofs"
+                label="Service Proof Document"
+                existingFiles={services.serviceProofs ?? []}
+                onUpload={(files: DocumentFile[]) => onServicesChange({ ...services, serviceProofs: files.slice(-1) })}
+              />
+            </>
+          )}
+        </div>
       </div>
     </div>
   )

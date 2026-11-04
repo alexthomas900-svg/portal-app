@@ -31,7 +31,7 @@ const PROMOTION_STEP_LABELS = [
   'Research',
   'Services',
   'Documents',
-  'Review',
+  'Preview',
   'Declaration',
 ]
 
@@ -44,14 +44,14 @@ const NON_PROMOTION_STEP_LABELS = [
   'Scholarship',
   'Services',
   'Documents',
-  'Review',
+  'Preview',
   'Declaration',
 ]
 
 const ANNUAL_EVALUATION_STEP_LABELS = [
   'Personal Info',
   'Annual Evaluation',
-  'Review',
+  'Preview',
   'Declaration',
 ]
 
@@ -218,6 +218,10 @@ export default function ApplicationForm() {
           data={application.teachingEffectiveness}
           applicationId={application.id}
           onChange={(teachingEffectiveness) => updateApp({ teachingEffectiveness })}
+          courseOutlines={application.documents.courseOutlines}
+          onCourseOutlinesChange={(courseOutlines) =>
+            updateApp({ documents: { ...application.documents, courseOutlines } })
+          }
         />
       )
     }
@@ -226,7 +230,6 @@ export default function ApplicationForm() {
       return (
         <EffortsToImproveStep
           data={application.effortsToImprove}
-          applicationId={application.id}
           onChange={(effortsToImprove) => updateApp({ effortsToImprove })}
         />
       )
@@ -236,7 +239,6 @@ export default function ApplicationForm() {
       return (
         <ScholarshipStep
           data={application.scholarship}
-          applicationId={application.id}
           onChange={(scholarship) => updateApp({ scholarship })}
         />
       )
@@ -255,7 +257,6 @@ export default function ApplicationForm() {
       return (
         <ServicesStep
           data={application.services}
-          applicationId={application.id}
           onChange={(services) => updateApp({ services })}
         />
       )
@@ -269,6 +270,14 @@ export default function ApplicationForm() {
           applicationType={application.applicationType}
           promotionType={application.promotionType}
           onChange={(documents) => updateApp({ documents })}
+          teaching={application.teachingEffectiveness}
+          efforts={application.effortsToImprove}
+          scholarship={application.scholarship}
+          services={application.services}
+          onTeachingChange={(teachingEffectiveness) => updateApp({ teachingEffectiveness })}
+          onEffortsChange={(effortsToImprove) => updateApp({ effortsToImprove })}
+          onScholarshipChange={(scholarship) => updateApp({ scholarship })}
+          onServicesChange={(services) => updateApp({ services })}
         />
       )
     }

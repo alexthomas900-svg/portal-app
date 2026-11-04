@@ -48,6 +48,7 @@ export interface ExperienceEntry {
   to: string
   isCurrent: boolean
   type: 'teaching' | 'research' | 'industry'
+  institutionType?: 'higher_education' | 'other'
 }
 
 export type JournalIndexing = 'HEC' | 'Scopus' | 'WoS' | 'DOAJ' | 'CNKI' | 'Other'
@@ -79,6 +80,7 @@ export interface Publication {
   year: number
   volume: string
   issue: string
+  pageNumbers?: string
   articleTitle: string
   numberOfAuthors: number
   authorNames: string[]

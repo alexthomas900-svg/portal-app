@@ -436,8 +436,42 @@ router.put('/:id', requireAuth, async (req: AuthRequest, res) => {
     for (const section of ['teachingEffectiveness', 'effortsToImprove', 'scholarship', 'services']) {
       const sectionData = safeBody[section]
       if (sectionData && typeof sectionData === 'object') {
-        delete (sectionData as Record<string, unknown>).rubricScores
+        const incomingSection = sectionData as Record<string, unknown>
+        const existingSection = existing[section] as Record<string, unknown> | undefined
+        if (isApplicant) {
+          for (const field of ['overallRating', 'chairRating', 'deanRating', 'studentRating', 'rubricScores']) {
+            if (existingSection && field in existingSection) {
+              incomingSection[field] = existingSection[field]
+            } else {
+              delete incomingSection[field]
+            }
+          }
+          safeBody[section] = { ...existingSection, ...incomingSection }
+        } else {
+          delete incomingSection.rubricScores
+        }
       }
+    }
+    if (isApplicant && Array.isArray(safeBody.publications)) {
+      const previousPublications = new Map(
+        ((existing.publications as Array<Record<string, unknown>> | undefined) ?? [])
+          .map((publication) => [String(publication.id), publication]),
+      )
+      safeBody.publications = (safeBody.publications as Array<Record<string, unknown>>).map((publication) => {
+        const previous = previousPublications.get(String(publication.id))
+        const unchanged = previous &&
+          previous.articleTitle === publication.articleTitle &&
+          previous.journalName === publication.journalName &&
+          previous.indexing === publication.indexing
+        const verification = unchanged ? previous.verification as Record<string, unknown> | undefined : undefined
+        const safePublication: Record<string, unknown> = {
+          ...publication,
+          recognized: verification?.status === 'verified',
+        }
+        if (verification) safePublication.verification = verification
+        else delete safePublication.verification
+        return safePublication
+      })
     }
     if (safeBody.personalInfo && typeof safeBody.personalInfo === 'object') {
       const personalInfo = safeBody.personalInfo as Record<string, unknown>
@@ -524,6 +558,16 @@ router.post('/:id/submit', requireAuth, async (req: AuthRequest, res) => {
       })
       if (missing.length) {
         res.status(400).json({ error: `Complete the required documents: ${missing.join(', ')}` })
+        return
+      }
+    }
+    if (applicationData.applicationType === 'promotion') {
+      const teaching = applicationData.teachingEffectiveness as Record<string, unknown> | undefined
+      const documents = applicationData.documents as Record<string, unknown> | undefined
+      const sloDocuments = teaching?.sloDocuments as unknown[] | undefined
+      const courseOutlines = documents?.courseOutlines as unknown[] | undefined
+      if (!sloDocuments?.length || (courseOutlines?.length ?? 0) < 2) {
+        res.status(400).json({ error: 'Upload a sample SLO document and at least two course outlines before submitting' })
         return
       }
     }
@@ -638,11 +682,12 @@ router.post('/:id/publications/:pubId/verify', requireAuth, async (req: AuthRequ
 
     const pub = publications[pubIndex]!
     const verification = await verifyPublication(
+      String(pub.articleTitle ?? ''),
       String(pub.journalName ?? ''),
       String(pub.indexing ?? ''),
     )
 
-    publications[pubIndex] = { ...pub, verification }
+    publications[pubIndex] = { ...pub, verification, recognized: verification.status === 'verified' }
     await db.collection('applications').doc(req.params.id).update({
       publications,
       updatedAt: FieldValue.serverTimestamp(),
@@ -879,8 +924,19 @@ function stripReviewerOnlyFields(data: Record<string, unknown>): Record<string, 
   for (const section of ['teachingEffectiveness', 'effortsToImprove', 'scholarship', 'services'] as const) {
     const sectionData = result[section]
     if (sectionData && typeof sectionData === 'object') {
-      const { rubricScores, ...rest } = sectionData as Record<string, unknown> & { rubricScores?: unknown }
+      const {
+        rubricScores,
+        overallRating,
+        chairRating,
+        deanRating,
+        studentRating,
+        ...rest
+      } = sectionData as Record<string, unknown>
       void rubricScores
+      void overallRating
+      void chairRating
+      void deanRating
+      void studentRating
       result[section] = rest
     }
   }

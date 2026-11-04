@@ -1,46 +1,25 @@
-import type { EffortsToImprove, RatingLevel, DocumentFile } from '../../../types'
-import FileUpload from '../../shared/FileUpload'
+import type { EffortsToImprove } from '../../../types'
 
 interface Props {
   data: EffortsToImprove
   onChange: (data: EffortsToImprove) => void
-  applicationId: string
 }
 
-const RATING_OPTIONS: { value: RatingLevel; label: string; score: number }[] = [
-  { value: 'exceeds', label: 'Exceeds Expectations', score: 10 },
-  { value: 'meets', label: 'Meets Expectations', score: 8 },
-  { value: 'minimal', label: 'Minimally Acceptable', score: 6 },
-  { value: 'deficient', label: 'Deficient', score: 4 },
-]
-
-function ratingFromHours(hours: number): RatingLevel {
-  if (hours >= 50) return 'exceeds'
-  if (hours >= 36) return 'meets'
-  if (hours >= 11) return 'minimal'
-  return 'deficient'
-}
-
-export default function EffortsToImproveStep({ data, onChange, applicationId }: Props) {
+export default function EffortsToImproveStep({ data, onChange }: Props) {
   const update = (field: keyof EffortsToImprove, value: unknown) => {
     onChange({ ...data, [field]: value })
   }
-
-  const currentScore = RATING_OPTIONS.find((r) => r.value === data.overallRating)?.score || 0
 
   return (
     <div className="space-y-6">
       <div>
         <h3 className="text-lg font-semibold text-text mb-1">Efforts to Improve as a Teacher</h3>
-        <p className="text-sm text-text-secondary">
-          Maximum 10 marks. Current score:{' '}
-          <span className="font-semibold text-primary">{currentScore}</span>
-        </p>
+        <p className="text-sm text-text-secondary">Describe your professional development activities and CPD hours.</p>
       </div>
 
       <div className="space-y-4">
         <div className="p-3 rounded-lg bg-warning-light border border-yellow-200 text-sm text-warning">
-          <strong>Note:</strong> Professional development starts as <em>Deficient</em>. Upload evidence in each subsection — criteria-based scoring replaces narrative-only evaluation.
+          <strong>Note:</strong> Upload professional development evidence in the Document Upload section. Ratings are confidential.
         </div>
 
         <div>
@@ -87,16 +66,6 @@ export default function EffortsToImproveStep({ data, onChange, applicationId }: 
             placeholder="Describe your reflective teaching practices..."
             rows={3}
           />
-          <div className="mt-2">
-            <FileUpload
-              applicationId={applicationId}
-              category="reflectiveEssays"
-              label="Reflective Practice Artifacts (essays, journals, self-assessments)"
-              multiple
-              existingFiles={data.reflectiveEssays ?? []}
-              onUpload={(files: DocumentFile[]) => update('reflectiveEssays', files)}
-            />
-          </div>
         </div>
 
         <div>
@@ -105,19 +74,9 @@ export default function EffortsToImproveStep({ data, onChange, applicationId }: 
             type="number"
             min={0}
             value={data.cpdHours}
-            onChange={(e) => {
-              const cpdHours = Number(e.target.value || 0)
-              onChange({
-                ...data,
-                cpdHours,
-                overallRating: ratingFromHours(cpdHours),
-              })
-            }}
+            onChange={(e) => update('cpdHours', Number(e.target.value || 0))}
             placeholder="e.g., 42"
           />
-          <p className="text-xs text-text-dim mt-1">
-            Auto rubric: 50+ = 10, 36-49 = 8, 11-35 = 6, below 11 = 4
-          </p>
         </div>
 
         <div>
@@ -130,48 +89,6 @@ export default function EffortsToImproveStep({ data, onChange, applicationId }: 
             placeholder="List continuing professional development activities..."
             rows={3}
           />
-          <div className="mt-2">
-            <FileUpload
-              applicationId={applicationId}
-              category="workshopAttendance"
-              label="Workshop / Training Attendance Records"
-              multiple
-              existingFiles={data.workshopAttendance ?? []}
-              onUpload={(files: DocumentFile[]) => update('workshopAttendance', files)}
-            />
-          </div>
-        </div>
-
-        <div>
-          <FileUpload
-            applicationId={applicationId}
-            category="trainingCertificates"
-            label="Training Certificates and Credentials"
-            multiple
-            existingFiles={data.trainingCertificates ?? []}
-            onUpload={(files: DocumentFile[]) => update('trainingCertificates', files)}
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-text mb-1.5">Overall Rating</label>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            {RATING_OPTIONS.map((opt) => (
-              <button
-                key={opt.value}
-                type="button"
-                onClick={() => update('overallRating', opt.value)}
-                className={`p-3 rounded-lg border text-sm font-medium text-center transition-colors ${
-                  data.overallRating === opt.value
-                    ? 'border-primary bg-primary-50 text-primary'
-                    : 'border-border text-text-secondary hover:border-primary-light'
-                }`}
-              >
-                <p>{opt.label}</p>
-                <p className="text-xs mt-0.5 opacity-70">{opt.score} marks</p>
-              </button>
-            ))}
-          </div>
         </div>
       </div>
     </div>

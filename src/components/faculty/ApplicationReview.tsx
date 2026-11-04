@@ -29,38 +29,18 @@ function Field({ label, value }: { label: string; value: string | number | boole
   )
 }
 
-function RatingBadge({ rating }: { rating: string }) {
-  const colors: Record<string, string> = {
-    exceeds: 'bg-success-light text-success border-success',
-    meets: 'bg-primary-50 text-primary border-primary',
-    minimal: 'bg-warning-light text-warning border-warning',
-    deficient: 'bg-danger-light text-danger border-danger',
-  }
-  const labels: Record<string, string> = {
-    exceeds: 'Exceeds Expectations',
-    meets: 'Meets Expectations',
-    minimal: 'Minimally Acceptable',
-    deficient: 'Deficient',
-  }
-  return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded border text-xs font-medium ${colors[rating] ?? ''}`}>
-      {labels[rating] ?? rating}
-    </span>
-  )
-}
-
 export default function ApplicationReview({ application }: Props) {
   const allVerified = application.publications.every(
-    (p) => p.verification?.status === 'verified' || !p.verification,
+    (p) => p.verification?.status === 'verified',
   )
   const flaggedPublications = application.publications.filter(
-    (p) => p.verification?.status === 'unverified' || p.verification?.flagReason,
+    (p) => p.verification?.status !== 'verified',
   )
 
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-bold text-text mb-1">Review Your Application</h2>
+        <h2 className="text-xl font-bold text-text mb-1">Application Preview</h2>
         <p className="text-sm text-text-secondary">
           Review all sections carefully before final submission. Once submitted, you cannot edit your application.
         </p>
@@ -136,13 +116,13 @@ export default function ApplicationReview({ application }: Props) {
               {flaggedPublications.length > 0 && (
                 <div className="flex items-start gap-2 p-2 rounded bg-danger-light border border-red-200 text-sm text-danger">
                   <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                  <span>{flaggedPublications.length} publication(s) could not be verified. Reviewers will be alerted.</span>
+                  <span>{flaggedPublications.length} publication(s) still require verification. Reviewers will be alerted.</span>
                 </div>
               )}
               {allVerified && application.publications.length > 0 && (
                 <div className="flex items-center gap-2 p-2 rounded bg-success-light border border-green-200 text-sm text-success">
                   <CheckCircle2 className="w-4 h-4 shrink-0" />
-                  <span>All publications have passed initial verification checks.</span>
+                  <span>All publications were verified against an approved indexing source.</span>
                 </div>
               )}
               {application.publications.map((pub) => (
@@ -171,18 +151,10 @@ export default function ApplicationReview({ application }: Props) {
 
       {/* Teaching */}
       <SectionCard title="Teaching Effectiveness" icon={FileText}>
-        <div className="flex items-center gap-2 mb-2">
-          <RatingBadge rating={application.teachingEffectiveness.overallRating} />
-        </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Field label="Bloom's Taxonomy Alignment" value={application.teachingEffectiveness.bloomAlignment} />
           <Field label="Fink's Taxonomy Alignment" value={application.teachingEffectiveness.finkAlignment} />
           <Field label="Higher-Order Thinking" value={application.teachingEffectiveness.higherOrderThinking} />
-        </div>
-        <div className="flex gap-4 text-sm text-text-secondary mt-2">
-          <span>Chair: {application.teachingEffectiveness.chairRating}/5</span>
-          <span>Dean: {application.teachingEffectiveness.deanRating}/5</span>
-          <span>Students: {application.teachingEffectiveness.studentRating}/5</span>
         </div>
         {(application.teachingEffectiveness.syllabi?.length || application.teachingEffectiveness.sloDocuments?.length || application.teachingEffectiveness.assessmentSamples?.length || application.teachingEffectiveness.studentFeedbackDocs?.length) ? (
           <p className="text-xs text-success mt-1">
@@ -200,9 +172,6 @@ export default function ApplicationReview({ application }: Props) {
 
       {/* Efforts */}
       <SectionCard title="Efforts to Improve" icon={Briefcase}>
-        <div className="flex items-center gap-2 mb-2">
-          <RatingBadge rating={application.effortsToImprove.overallRating} />
-        </div>
         <Field label="CPD Hours" value={application.effortsToImprove.cpdHours} />
         {(application.effortsToImprove.trainingCertificates?.length || application.effortsToImprove.workshopAttendance?.length || application.effortsToImprove.reflectiveEssays?.length) ? (
           <p className="text-xs text-success">✓ Evidence documents uploaded.</p>
@@ -213,9 +182,6 @@ export default function ApplicationReview({ application }: Props) {
 
       {/* Scholarship */}
       <SectionCard title="Scholarly Activity" icon={BookOpen}>
-        <div className="flex items-center gap-2 mb-2">
-          <RatingBadge rating={application.scholarship.overallRating} />
-        </div>
         {(application.scholarship.publicationProofs?.length || application.scholarship.conferenceProofs?.length || application.scholarship.grantDocuments?.length) ? (
           <p className="text-xs text-success">✓ Scholarly evidence documents uploaded.</p>
         ) : (
@@ -225,9 +191,6 @@ export default function ApplicationReview({ application }: Props) {
 
       {/* Services */}
       <SectionCard title="Services" icon={Users}>
-        <div className="flex items-center gap-2 mb-2">
-          <RatingBadge rating={application.services.overallRating} />
-        </div>
         {(application.services.committeeLetters?.length || application.services.serviceProofs?.length) ? (
           <p className="text-xs text-success">✓ Service evidence documents uploaded.</p>
         ) : (

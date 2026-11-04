@@ -2,7 +2,7 @@ import type { Publication } from '../types'
 
 /**
  * Generate APA 7 formatted reference from publication data.
- * Format: Author(s). (Year). Title. Journal Name, Volume(Issue).
+ * Format: Author(s). (Year). Title. Journal Name, Volume(Issue), pages.
  */
 export function generateAPA(pub: Publication): string {
   if (!pub.articleTitle && !pub.journalName) return ''
@@ -10,16 +10,7 @@ export function generateAPA(pub: Publication): string {
   // Format authors
   const authors = pub.authorNames
     .filter((n) => n.trim())
-    .map((name) => {
-      const parts = name.trim().split(/\s+/)
-      if (parts.length === 1) return parts[0] || ''
-      const lastName = parts[parts.length - 1]
-      const initials = parts
-        .slice(0, -1)
-        .map((p) => p.charAt(0).toUpperCase() + '.')
-        .join(' ')
-      return `${lastName}, ${initials}`
-    })
+    .map((name) => name.trim())
 
   let authorStr = ''
   if (authors.length === 0) {
@@ -39,6 +30,10 @@ export function generateAPA(pub: Publication): string {
     if (pub.issue) {
       ref += `(${pub.issue})`
     }
+  }
+
+  if (pub.pageNumbers) {
+    ref += `, ${pub.pageNumbers}`
   }
 
   ref += '.'

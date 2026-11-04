@@ -15,6 +15,7 @@ import {
 } from '../../types'
 import { useAuth } from '../../contexts/AuthContext'
 import { printPdfReport } from '../../utils/reports'
+import { generateAPA } from '../../utils/apa'
 
 export default function ApplicationView() {
   const { role } = useAuth()
@@ -50,12 +51,12 @@ export default function ApplicationView() {
 
   const eligibility = checkEligibility(app)
   const isPromotion = app.applicationType === 'promotion'
-  const totalScore =
+  const isApplicant = role === 'faculty'
+  const totalScore = isApplicant ? 0 :
     TEACHING_SCORES[app.teachingEffectiveness.overallRating] +
     EFFORTS_SCORES[app.effortsToImprove.overallRating] +
     SCHOLARSHIP_SCORES[app.scholarship.overallRating] +
     SERVICES_SCORES[app.services.overallRating]
-  const isApplicant = role === 'faculty'
   const applicationTitle = isPromotion
     ? `${formatPromotionLabel(app.promotionType)} Promotion Application`
     : formatApplicationTypeLabel(app.applicationType)
@@ -208,12 +209,15 @@ export default function ApplicationView() {
                   </p>
                   <p className="text-text-secondary text-xs mt-0.5">
                     {pub.journalName} · {pub.year} · {pub.indexing}
+                    {pub.volume && ` · Vol. ${pub.volume}`}
+                    {pub.issue && `, Issue ${pub.issue}`}
+                    {pub.pageNumbers && `, pp. ${pub.pageNumbers}`}
                     {pub.recognized && (
                       <span className="ml-2 text-success">✓ Recognized</span>
                     )}
                   </p>
-                  {pub.apaReference && (
-                    <p className="text-text-dim text-xs mt-1 italic">{pub.apaReference}</p>
+                  {generateAPA(pub) && (
+                    <p className="text-text-dim text-xs mt-1 italic">{generateAPA(pub)}</p>
                   )}
                 </div>
               ))}
