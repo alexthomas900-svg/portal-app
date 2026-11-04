@@ -1,5 +1,5 @@
 // ── Roles ──
-export type UserRole = 'faculty' | 'internal_reviewer' | 'external_reviewer' | 'admin'
+export type UserRole = 'faculty' | 'internal_reviewer' | 'external_reviewer' | 'committee_member' | 'admin'
 
 export interface UserProfile {
   uid: string
@@ -298,6 +298,53 @@ export const SERVICES_SCORES: Record<RatingLevel, number> = {
   deficient: 8,
 }
 
+export interface AnnualEvaluationData {
+  evaluationYear: string
+  employmentDetails: string
+  coursesTaught: string
+  teachingStrategies: string
+  assessmentMethods: string
+  teachingInnovations: string
+  teachingAchievements: string
+  teachingReflection: string
+  researchActivities: string
+  researchProjects: string
+  conferencePresentations: string
+  researchCollaborations: string
+  researchAchievements: string
+  professionalDevelopment: string
+  cpdHours: number
+  booksAndChapters: string
+  academicContributions: string
+  departmentalResponsibilities: string
+  universityCommittees: string
+  studentAdvisingAndActivities: string
+  leadershipAndCommunityService: string
+  institutionalEngagement: string
+  majorAchievements: string
+  challenges: string
+  areasForImprovement: string
+  futureGoals: string
+  supportRequired: string
+  supportingDocuments: DocumentFile[]
+}
+
+export interface ApplicationCycle {
+  id: string
+  name: string
+  applicationType: ApplicationType
+  promotionType?: PromotionType
+  academicYear: string
+  opensAt: string
+  closesAt: string
+  requiredDocuments: string[]
+  isOpen: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export type CommitteeDecision = 'approved' | 'not_approved' | 'deferred' | 'returned_for_information'
+
 // ── Application ──
 export interface Application {
   id: string
@@ -306,6 +353,11 @@ export interface Application {
   applicantEmail: string
   applicationType: ApplicationType
   promotionType: PromotionType
+  cycleId?: string
+  annualEvaluation?: AnnualEvaluationData
+  snapshotId?: string
+  conflictDeclared?: boolean
+  conflictExplanation?: string
   status: ApplicationStatus
 
   personalInfo: PersonalInfo
@@ -399,6 +451,39 @@ export function emptyPersonalInfo(): PersonalInfo {
     dateOfJoining: '',
     applicationType: 'promotion',
     promotionType: 'associate_professor',
+  }
+}
+
+export function emptyAnnualEvaluation(): AnnualEvaluationData {
+  return {
+    evaluationYear: String(new Date().getFullYear()),
+    employmentDetails: '',
+    coursesTaught: '',
+    teachingStrategies: '',
+    assessmentMethods: '',
+    teachingInnovations: '',
+    teachingAchievements: '',
+    teachingReflection: '',
+    researchActivities: '',
+    researchProjects: '',
+    conferencePresentations: '',
+    researchCollaborations: '',
+    researchAchievements: '',
+    professionalDevelopment: '',
+    cpdHours: 0,
+    booksAndChapters: '',
+    academicContributions: '',
+    departmentalResponsibilities: '',
+    universityCommittees: '',
+    studentAdvisingAndActivities: '',
+    leadershipAndCommunityService: '',
+    institutionalEngagement: '',
+    majorAchievements: '',
+    challenges: '',
+    areasForImprovement: '',
+    futureGoals: '',
+    supportRequired: '',
+    supportingDocuments: [],
   }
 }
 

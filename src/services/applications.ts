@@ -12,7 +12,7 @@ import {
 } from 'firebase/firestore'
 import { apiGet, apiPost, apiPut, apiDelete } from '../lib/api'
 import { auth, db } from '../firebase'
-import type { Application, EvaluationReport, PublicationVerification, ReviewerComment } from '../types'
+import { emptyAnnualEvaluation, type Application, type EvaluationReport, type PublicationVerification, type ReviewerComment } from '../types'
 
 function toIsoString(value: unknown): string {
   if (!value) return new Date().toISOString()
@@ -57,6 +57,7 @@ function buildEmptyApplication(
   name: string,
   email: string,
   applicationType: Application['applicationType'],
+  promotionType: Application['promotionType'] = 'associate_professor',
 ): Application {
   const now = new Date().toISOString()
 
@@ -66,7 +67,8 @@ function buildEmptyApplication(
     applicantName: name,
     applicantEmail: email,
     applicationType,
-    promotionType: 'associate_professor',
+    promotionType,
+    ...(applicationType === 'self_evaluation' ? { annualEvaluation: emptyAnnualEvaluation() } : {}),
     status: 'draft',
     personalInfo: {
       fullName: name,
@@ -79,7 +81,7 @@ function buildEmptyApplication(
       dateOfBirth: '',
       dateOfJoining: '',
       applicationType,
-      promotionType: 'associate_professor',
+      promotionType,
     },
     qualifications: [],
     experience: [],
@@ -173,12 +175,15 @@ export async function createApplication(
   name: string,
   email: string,
   applicationType: Application['applicationType'] = 'promotion',
+  promotionType: Application['promotionType'] = 'associate_professor',
+  cycleId?: string,
 ): Promise<Application> {
   try {
-    return await apiPost('/api/applications', { applicationType })
+    return await apiPost('/api/applications', { applicationType, promotionType, cycleId })
   } catch {
     const ref = doc(collection(db, 'applications'))
-    const application = buildEmptyApplication(ref.id, uid, name, email, applicationType)
+    const application = buildEmptyApplication(ref.id, uid, name, email, applicationType, promotionType)
+    if (cycleId) application.cycleId = cycleId
     await setDoc(
       ref,
       stripUndefined({

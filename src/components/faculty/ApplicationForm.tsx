@@ -17,6 +17,8 @@ import ServicesStep from './steps/Services'
 import DocumentUploadStep from './steps/DocumentUpload'
 import DeclarationStep from './steps/Declaration'
 import ApplicationReview from './ApplicationReview'
+import AnnualEvaluationStep from './AnnualEvaluationStep'
+import { emptyAnnualEvaluation } from '../../types'
 
 const PROMOTION_STEP_LABELS = [
   'Personal Info',
@@ -46,6 +48,13 @@ const NON_PROMOTION_STEP_LABELS = [
   'Declaration',
 ]
 
+const ANNUAL_EVALUATION_STEP_LABELS = [
+  'Personal Info',
+  'Annual Evaluation',
+  'Review',
+  'Declaration',
+]
+
 export default function ApplicationForm() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -59,7 +68,9 @@ export default function ApplicationForm() {
   useEffect(() => {
     if (id) {
       getApplication(id).then((app) => {
-        setApplication(app)
+        setApplication(app?.applicationType === 'self_evaluation' && !app.annualEvaluation
+          ? { ...app, annualEvaluation: emptyAnnualEvaluation() }
+          : app)
         setLoading(false)
       })
     }
@@ -114,7 +125,10 @@ export default function ApplicationForm() {
   }
 
   const isPromotion = application.applicationType === 'promotion'
-  const stepLabels = isPromotion ? PROMOTION_STEP_LABELS : NON_PROMOTION_STEP_LABELS
+  const isAnnualEvaluation = application.applicationType === 'self_evaluation'
+  const stepLabels = isAnnualEvaluation
+    ? ANNUAL_EVALUATION_STEP_LABELS
+    : isPromotion ? PROMOTION_STEP_LABELS : NON_PROMOTION_STEP_LABELS
 
   const renderStep = () => {
     if (step === 0) {
@@ -130,6 +144,28 @@ export default function ApplicationForm() {
           }
         />
       )
+    }
+
+    if (isAnnualEvaluation) {
+      if (step === 1) {
+        return (
+          <AnnualEvaluationStep
+            applicationId={application.id}
+            data={application.annualEvaluation ?? emptyAnnualEvaluation()}
+            onChange={(annualEvaluation) => updateApp({ annualEvaluation })}
+          />
+        )
+      }
+      if (step === 2) return <ApplicationReview application={application} />
+      if (step === 3) {
+        return (
+          <DeclarationStep
+            application={application}
+            onAccept={(declaration) => updateApp({ declaration })}
+          />
+        )
+      }
+      return null
     }
 
     if (step === 1) {

@@ -73,41 +73,48 @@ export default function ApplicationReview({ application }: Props) {
       </div>
 
       {/* Summary card */}
-      <div className="card p-5 bg-surface-alt">
-        <div className="flex flex-wrap items-center gap-3 mb-3">
-          <StatusBadge status={application.status} />
-          <span className="text-sm text-text-secondary">
-            {application.applicationType === 'promotion'
-              ? `${formatPromotionLabel(application.promotionType)} Promotion`
-              : formatApplicationTypeLabel(application.applicationType)}
-          </span>
-        </div>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-3">
-          <div className="text-center">
-            <p className="text-xl font-bold text-primary">{teachingScore}</p>
-            <p className="text-xs text-text-secondary">Teaching (max 45)</p>
+      {application.applicationType !== 'self_evaluation' && (
+        <div className="card p-5 bg-surface-alt">
+          <div className="flex flex-wrap items-center gap-3 mb-3">
+            <StatusBadge status={application.status} />
+            <span className="text-sm text-text-secondary">
+              {application.applicationType === 'promotion'
+                ? `${formatPromotionLabel(application.promotionType)} Promotion`
+                : formatApplicationTypeLabel(application.applicationType)}
+            </span>
           </div>
-          <div className="text-center">
-            <p className="text-xl font-bold text-primary">{effortsScore}</p>
-            <p className="text-xs text-text-secondary">Efforts (max 10)</p>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-3">
+            <div className="text-center"><p className="text-xl font-bold text-primary">{teachingScore}</p><p className="text-xs text-text-secondary">Teaching (max 45)</p></div>
+            <div className="text-center"><p className="text-xl font-bold text-primary">{effortsScore}</p><p className="text-xs text-text-secondary">Efforts (max 10)</p></div>
+            <div className="text-center"><p className="text-xl font-bold text-primary">{scholarshipScore}</p><p className="text-xs text-text-secondary">Scholarship (max 25)</p></div>
+            <div className="text-center"><p className="text-xl font-bold text-primary">{servicesScore}</p><p className="text-xs text-text-secondary">Services (max 20)</p></div>
           </div>
-          <div className="text-center">
-            <p className="text-xl font-bold text-primary">{scholarshipScore}</p>
-            <p className="text-xs text-text-secondary">Scholarship (max 25)</p>
-          </div>
-          <div className="text-center">
-            <p className="text-xl font-bold text-primary">{servicesScore}</p>
-            <p className="text-xs text-text-secondary">Services (max 20)</p>
+          <div className="mt-3 pt-3 border-t border-border text-center">
+            <p className="text-sm text-text-secondary">Preliminary Self-Assessment Total</p>
+            <p className="text-2xl font-bold text-text">{totalScore} / 100</p>
+            <p className="text-xs text-text-dim mt-1">Detailed AI scoring is generated for reviewers only.</p>
           </div>
         </div>
-        <div className="mt-3 pt-3 border-t border-border text-center">
-          <p className="text-sm text-text-secondary">Preliminary Self-Assessment Total</p>
-          <p className="text-2xl font-bold text-text">{totalScore} / 100</p>
-          <p className="text-xs text-text-dim mt-1">
-            Note: Detailed AI scoring is generated for reviewers only and is not shown here.
-          </p>
-        </div>
-      </div>
+      )}
+
+      {application.applicationType === 'self_evaluation' && (
+        <SectionCard title={`Annual Evaluation ${application.annualEvaluation?.evaluationYear ?? ''}`} icon={FileText}>
+          <div className="space-y-3">
+            {[
+              ['Employment', application.annualEvaluation?.employmentDetails],
+              ['Courses taught', application.annualEvaluation?.coursesTaught],
+              ['Teaching and learning', [application.annualEvaluation?.teachingStrategies, application.annualEvaluation?.assessmentMethods, application.annualEvaluation?.teachingInnovations, application.annualEvaluation?.teachingAchievements, application.annualEvaluation?.teachingReflection].filter(Boolean).join('\n')],
+              ['Research and publications', [application.annualEvaluation?.researchActivities, application.annualEvaluation?.researchProjects, application.annualEvaluation?.conferencePresentations, application.annualEvaluation?.researchCollaborations, application.annualEvaluation?.researchAchievements].filter(Boolean).join('\n')],
+              ['Professional development', application.annualEvaluation?.professionalDevelopment],
+              ['Scholarship', application.annualEvaluation?.booksAndChapters],
+              ['University service and leadership', [application.annualEvaluation?.departmentalResponsibilities, application.annualEvaluation?.universityCommittees, application.annualEvaluation?.studentAdvisingAndActivities, application.annualEvaluation?.leadershipAndCommunityService, application.annualEvaluation?.institutionalEngagement].filter(Boolean).join('\n')],
+              ['Reflection and future goals', [application.annualEvaluation?.majorAchievements, application.annualEvaluation?.challenges, application.annualEvaluation?.areasForImprovement, application.annualEvaluation?.futureGoals, application.annualEvaluation?.supportRequired].filter(Boolean).join('\n')],
+              ['CPD hours', application.annualEvaluation?.cpdHours],
+            ].map(([label, value]) => value ? <Field key={String(label)} label={String(label)} value={String(value)} /> : null)}
+            <p className="text-sm text-text-secondary">Supporting evidence: {application.annualEvaluation?.supportingDocuments.length ?? 0} file(s)</p>
+          </div>
+        </SectionCard>
+      )}
 
       {/* Personal Info */}
       <SectionCard title="Personal Information" icon={Users}>
