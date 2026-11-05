@@ -1,6 +1,6 @@
 import { FileText, CheckCircle2, AlertCircle, Award, BookOpen, Users, Briefcase } from 'lucide-react'
 import type { Application } from '../../types'
-import { formatPromotionLabel, formatApplicationTypeLabel, TEACHING_SCORES, EFFORTS_SCORES, SCHOLARSHIP_SCORES, SERVICES_SCORES } from '../../types'
+import { formatPromotionLabel, formatApplicationTypeLabel } from '../../types'
 import StatusBadge from '../shared/StatusBadge'
 
 interface Props {
@@ -29,52 +29,25 @@ function Field({ label, value }: { label: string; value: string | number | boole
   )
 }
 
-function RatingBadge({ rating }: { rating: string }) {
-  const colors: Record<string, string> = {
-    exceeds: 'bg-success-light text-success border-success',
-    meets: 'bg-primary-50 text-primary border-primary',
-    minimal: 'bg-warning-light text-warning border-warning',
-    deficient: 'bg-danger-light text-danger border-danger',
-  }
-  const labels: Record<string, string> = {
-    exceeds: 'Exceeds Expectations',
-    meets: 'Meets Expectations',
-    minimal: 'Minimally Acceptable',
-    deficient: 'Deficient',
-  }
-  return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded border text-xs font-medium ${colors[rating] ?? ''}`}>
-      {labels[rating] ?? rating}
-    </span>
-  )
-}
-
 export default function ApplicationReview({ application }: Props) {
-  const teachingScore = TEACHING_SCORES[application.teachingEffectiveness.overallRating]
-  const effortsScore = EFFORTS_SCORES[application.effortsToImprove.overallRating]
-  const scholarshipScore = SCHOLARSHIP_SCORES[application.scholarship.overallRating]
-  const servicesScore = SERVICES_SCORES[application.services.overallRating]
-  const totalScore = teachingScore + effortsScore + scholarshipScore + servicesScore
-
   const allVerified = application.publications.every(
-    (p) => p.verification?.status === 'verified' || !p.verification,
+    (p) => p.verification?.status === 'verified',
   )
   const flaggedPublications = application.publications.filter(
-    (p) => p.verification?.status === 'unverified' || p.verification?.flagReason,
+    (p) => p.verification?.status !== 'verified',
   )
 
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-bold text-text mb-1">Review Your Application</h2>
+        <h2 className="text-xl font-bold text-text mb-1">Application Preview</h2>
         <p className="text-sm text-text-secondary">
           Review all sections carefully before final submission. Once submitted, you cannot edit your application.
         </p>
       </div>
 
-      {/* Summary card */}
-      <div className="card p-5 bg-surface-alt">
-        <div className="flex flex-wrap items-center gap-3 mb-3">
+      <div className="card p-4 bg-surface-alt">
+        <div className="flex flex-wrap items-center gap-3">
           <StatusBadge status={application.status} />
           <span className="text-sm text-text-secondary">
             {application.applicationType === 'promotion'
@@ -82,32 +55,29 @@ export default function ApplicationReview({ application }: Props) {
               : formatApplicationTypeLabel(application.applicationType)}
           </span>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-3">
-          <div className="text-center">
-            <p className="text-xl font-bold text-primary">{teachingScore}</p>
-            <p className="text-xs text-text-secondary">Teaching (max 45)</p>
-          </div>
-          <div className="text-center">
-            <p className="text-xl font-bold text-primary">{effortsScore}</p>
-            <p className="text-xs text-text-secondary">Efforts (max 10)</p>
-          </div>
-          <div className="text-center">
-            <p className="text-xl font-bold text-primary">{scholarshipScore}</p>
-            <p className="text-xs text-text-secondary">Scholarship (max 25)</p>
-          </div>
-          <div className="text-center">
-            <p className="text-xl font-bold text-primary">{servicesScore}</p>
-            <p className="text-xs text-text-secondary">Services (max 20)</p>
-          </div>
-        </div>
-        <div className="mt-3 pt-3 border-t border-border text-center">
-          <p className="text-sm text-text-secondary">Preliminary Self-Assessment Total</p>
-          <p className="text-2xl font-bold text-text">{totalScore} / 100</p>
-          <p className="text-xs text-text-dim mt-1">
-            Note: Detailed AI scoring is generated for reviewers only and is not shown here.
-          </p>
-        </div>
+        <p className="text-xs text-text-dim mt-2">
+          Assessment scores and reviewer reports are confidential and are not displayed in the applicant portal.
+        </p>
       </div>
+
+      {application.applicationType === 'self_evaluation' && (
+        <SectionCard title={`Annual Evaluation ${application.annualEvaluation?.evaluationYear ?? ''}`} icon={FileText}>
+          <div className="space-y-3">
+            {[
+              ['Employment', application.annualEvaluation?.employmentDetails],
+              ['Courses taught', application.annualEvaluation?.coursesTaught],
+              ['Teaching and learning', [application.annualEvaluation?.teachingStrategies, application.annualEvaluation?.assessmentMethods, application.annualEvaluation?.teachingInnovations, application.annualEvaluation?.teachingAchievements, application.annualEvaluation?.teachingReflection].filter(Boolean).join('\n')],
+              ['Research and publications', [application.annualEvaluation?.researchActivities, application.annualEvaluation?.researchProjects, application.annualEvaluation?.conferencePresentations, application.annualEvaluation?.researchCollaborations, application.annualEvaluation?.researchAchievements].filter(Boolean).join('\n')],
+              ['Professional development', application.annualEvaluation?.professionalDevelopment],
+              ['Scholarship', application.annualEvaluation?.booksAndChapters],
+              ['University service and leadership', [application.annualEvaluation?.departmentalResponsibilities, application.annualEvaluation?.universityCommittees, application.annualEvaluation?.studentAdvisingAndActivities, application.annualEvaluation?.leadershipAndCommunityService, application.annualEvaluation?.institutionalEngagement].filter(Boolean).join('\n')],
+              ['Reflection and future goals', [application.annualEvaluation?.majorAchievements, application.annualEvaluation?.challenges, application.annualEvaluation?.areasForImprovement, application.annualEvaluation?.futureGoals, application.annualEvaluation?.supportRequired].filter(Boolean).join('\n')],
+              ['CPD hours', application.annualEvaluation?.cpdHours],
+            ].map(([label, value]) => value ? <Field key={String(label)} label={String(label)} value={String(value)} /> : null)}
+            <p className="text-sm text-text-secondary">Supporting evidence: {application.annualEvaluation?.supportingDocuments.length ?? 0} file(s)</p>
+          </div>
+        </SectionCard>
+      )}
 
       {/* Personal Info */}
       <SectionCard title="Personal Information" icon={Users}>
@@ -146,13 +116,13 @@ export default function ApplicationReview({ application }: Props) {
               {flaggedPublications.length > 0 && (
                 <div className="flex items-start gap-2 p-2 rounded bg-danger-light border border-red-200 text-sm text-danger">
                   <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                  <span>{flaggedPublications.length} publication(s) could not be verified. Reviewers will be alerted.</span>
+                  <span>{flaggedPublications.length} publication(s) still require verification. Reviewers will be alerted.</span>
                 </div>
               )}
               {allVerified && application.publications.length > 0 && (
                 <div className="flex items-center gap-2 p-2 rounded bg-success-light border border-green-200 text-sm text-success">
                   <CheckCircle2 className="w-4 h-4 shrink-0" />
-                  <span>All publications have passed initial verification checks.</span>
+                  <span>All publications were verified against an approved indexing source.</span>
                 </div>
               )}
               {application.publications.map((pub) => (
@@ -181,19 +151,10 @@ export default function ApplicationReview({ application }: Props) {
 
       {/* Teaching */}
       <SectionCard title="Teaching Effectiveness" icon={FileText}>
-        <div className="flex items-center gap-2 mb-2">
-          <RatingBadge rating={application.teachingEffectiveness.overallRating} />
-          <span className="text-sm text-text-secondary">{teachingScore} / 45 marks</span>
-        </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Field label="Bloom's Taxonomy Alignment" value={application.teachingEffectiveness.bloomAlignment} />
           <Field label="Fink's Taxonomy Alignment" value={application.teachingEffectiveness.finkAlignment} />
           <Field label="Higher-Order Thinking" value={application.teachingEffectiveness.higherOrderThinking} />
-        </div>
-        <div className="flex gap-4 text-sm text-text-secondary mt-2">
-          <span>Chair: {application.teachingEffectiveness.chairRating}/5</span>
-          <span>Dean: {application.teachingEffectiveness.deanRating}/5</span>
-          <span>Students: {application.teachingEffectiveness.studentRating}/5</span>
         </div>
         {(application.teachingEffectiveness.syllabi?.length || application.teachingEffectiveness.sloDocuments?.length || application.teachingEffectiveness.assessmentSamples?.length || application.teachingEffectiveness.studentFeedbackDocs?.length) ? (
           <p className="text-xs text-success mt-1">
@@ -211,10 +172,6 @@ export default function ApplicationReview({ application }: Props) {
 
       {/* Efforts */}
       <SectionCard title="Efforts to Improve" icon={Briefcase}>
-        <div className="flex items-center gap-2 mb-2">
-          <RatingBadge rating={application.effortsToImprove.overallRating} />
-          <span className="text-sm text-text-secondary">{effortsScore} / 10 marks</span>
-        </div>
         <Field label="CPD Hours" value={application.effortsToImprove.cpdHours} />
         {(application.effortsToImprove.trainingCertificates?.length || application.effortsToImprove.workshopAttendance?.length || application.effortsToImprove.reflectiveEssays?.length) ? (
           <p className="text-xs text-success">✓ Evidence documents uploaded.</p>
@@ -225,10 +182,6 @@ export default function ApplicationReview({ application }: Props) {
 
       {/* Scholarship */}
       <SectionCard title="Scholarly Activity" icon={BookOpen}>
-        <div className="flex items-center gap-2 mb-2">
-          <RatingBadge rating={application.scholarship.overallRating} />
-          <span className="text-sm text-text-secondary">{scholarshipScore} / 25 marks</span>
-        </div>
         {(application.scholarship.publicationProofs?.length || application.scholarship.conferenceProofs?.length || application.scholarship.grantDocuments?.length) ? (
           <p className="text-xs text-success">✓ Scholarly evidence documents uploaded.</p>
         ) : (
@@ -238,10 +191,6 @@ export default function ApplicationReview({ application }: Props) {
 
       {/* Services */}
       <SectionCard title="Services" icon={Users}>
-        <div className="flex items-center gap-2 mb-2">
-          <RatingBadge rating={application.services.overallRating} />
-          <span className="text-sm text-text-secondary">{servicesScore} / 20 marks</span>
-        </div>
         {(application.services.committeeLetters?.length || application.services.serviceProofs?.length) ? (
           <p className="text-xs text-success">✓ Service evidence documents uploaded.</p>
         ) : (

@@ -1,12 +1,46 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-    // Application documents
-    match /applications/{appId}/{allPaths=**} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null
-        && request.resource.size < 10 * 1024 * 1024
-        && request.resource.contentType.matches('application/pdf');
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function application(appId) {
+      return firestore.get(/databases/(default)/documents/applications/$(appId)).data;
+    }
+
+    function userRole() {
+      return firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role;
+    }
+
+    function isOwner(appId) {
+      return isSignedIn() && application(appId).applicantUid == request.auth.uid;
+    }
+
+    function isAssignedInternal(appId) {
+      return isSignedIn() && userRole() == 'internal_reviewer' &&
+        (!firestore.exists(/databases/(default)/documents/applications/$(appId)/conflicts/$(request.auth.uid)) ||
+          firestore.get(/databases/(default)/documents/applications/$(appId)/conflicts/$(request.auth.uid)).data.resolved == true) &&
+        (application(appId).assignments.internalReviewer1Uid == request.auth.uid ||
+          application(appId).assignments.internalReviewer2Uid == request.auth.uid);
+    }
+
+    function isAssignedExternal(appId) {
+      return isSignedIn() && userRole() == 'external_reviewer' &&
+        (!firestore.exists(/databases/(default)/documents/applications/$(appId)/conflicts/$(request.auth.uid)) ||
+          firestore.get(/databases/(default)/documents/applications/$(appId)/conflicts/$(request.auth.uid)).data.resolved == true) &&
+        application(appId).applicationType == 'promotion' &&
+        application(appId).promotionType == 'full_professor' &&
+        application(appId).assignments.externalReviewerUid == request.auth.uid;
+    }
+
+    match /applications/{appId}/{category}/{fileName} {
+      allow read: if isSignedIn() &&
+        (isOwner(appId) || userRole() == 'admin' || isAssignedInternal(appId) ||
+          (category == 'updated-cv' && isAssignedExternal(appId)));
+      allow write: if isOwner(appId) && application(appId).status == 'draft' &&
+        request.resource.size < 10 * 1024 * 1024 &&
+        request.resource.contentType == 'application/pdf';
     }
   }
 }

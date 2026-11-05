@@ -91,6 +91,7 @@ export default function UserManagement() {
                         <option value="faculty">Faculty</option>
                         <option value="internal_reviewer">Internal Reviewer</option>
                         <option value="external_reviewer">External Reviewer</option>
+                        <option value="committee_member">Committee Member</option>
                         <option value="admin">Admin</option>
                       </select>
                     </div>

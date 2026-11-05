@@ -1,38 +1,24 @@
-import type { ScholarshipData, RatingLevel, DocumentFile } from '../../../types'
-import FileUpload from '../../shared/FileUpload'
+import type { ScholarshipData } from '../../../types'
 
 interface Props {
   data: ScholarshipData
   onChange: (data: ScholarshipData) => void
-  applicationId: string
 }
 
-const RATING_OPTIONS: { value: RatingLevel; label: string; score: number }[] = [
-  { value: 'exceeds', label: 'Excellent', score: 25 },
-  { value: 'meets', label: 'Meets Expectations', score: 20 },
-  { value: 'minimal', label: 'Minimally Acceptable', score: 15 },
-  { value: 'deficient', label: 'Deficient', score: 10 },
-]
-
-export default function ScholarshipStep({ data, onChange, applicationId }: Props) {
+export default function ScholarshipStep({ data, onChange }: Props) {
   const update = (field: keyof ScholarshipData, value: unknown) => {
     onChange({ ...data, [field]: value })
   }
-
-  const currentScore = RATING_OPTIONS.find((r) => r.value === data.overallRating)?.score || 0
 
   return (
     <div className="space-y-6">
       <div>
         <h3 className="text-lg font-semibold text-text mb-1">Scholarship</h3>
-        <p className="text-sm text-text-secondary">
-          Maximum 25 marks. Current score:{' '}
-          <span className="font-semibold text-primary">{currentScore}</span>
-        </p>
+        <p className="text-sm text-text-secondary">Describe your scholarly activity. Ratings and evidence review are confidential.</p>
       </div>
 
       <div className="p-3 rounded-lg bg-warning-light border border-yellow-200 text-sm text-warning">
-        <strong>Note:</strong> Scholarly activity starts as <em>Deficient</em> and is upgraded based on verified publications, conference proofs, and other evidence uploaded below.
+        <strong>Note:</strong> Describe your research and scholarly contributions, including publications, conference presentations, grants, editorial work, awards, and student supervision. Add publications in the Publications section and upload supporting evidence in Document Upload. Ratings and evidence assessments are confidential.
       </div>
 
       <div className="space-y-4">
@@ -100,85 +86,6 @@ export default function ScholarshipStep({ data, onChange, applicationId }: Props
           </div>
         </div>
 
-        {/* Section-level evidence uploads */}
-        <div className="space-y-3 pt-2 border-t border-border">
-          <p className="text-xs font-semibold text-text-secondary uppercase tracking-wide">Evidence Documents</p>
-          <FileUpload
-            applicationId={applicationId}
-            category="publicationProofs"
-            label="Publication PDFs / Acceptance Letters"
-            multiple
-            existingFiles={data.publicationProofs ?? []}
-            onUpload={(files: DocumentFile[]) => update('publicationProofs', files)}
-          />
-          <FileUpload
-            applicationId={applicationId}
-            category="conferenceProofs"
-            label="Conference Acceptance Letters / Proceedings"
-            multiple
-            existingFiles={data.conferenceProofs ?? []}
-            onUpload={(files: DocumentFile[]) => update('conferenceProofs', files)}
-          />
-          <FileUpload
-            applicationId={applicationId}
-            category="grantDocuments"
-            label="Grant Award Letters / Editorial Appointment Letters"
-            multiple
-            existingFiles={data.grantDocuments ?? []}
-            onUpload={(files: DocumentFile[]) => update('grantDocuments', files)}
-          />
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-text mb-1.5">
-              Chair Rating (out of 5)
-            </label>
-            <input
-              type="number"
-              value={data.chairRating}
-              onChange={(e) => update('chairRating', Math.min(5, Math.max(0, parseFloat(e.target.value) || 0)))}
-              min={0}
-              max={5}
-              step={0.1}
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-text mb-1.5">
-              Dean Rating (out of 5)
-            </label>
-            <input
-              type="number"
-              value={data.deanRating}
-              onChange={(e) => update('deanRating', Math.min(5, Math.max(0, parseFloat(e.target.value) || 0)))}
-              min={0}
-              max={5}
-              step={0.1}
-            />
-          </div>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-text mb-1.5">Overall Rating</label>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            {RATING_OPTIONS.map((opt) => (
-              <button
-                key={opt.value}
-                type="button"
-                onClick={() => update('overallRating', opt.value)}
-                className={`p-3 rounded-lg border text-sm font-medium text-center transition-colors ${
-                  data.overallRating === opt.value
-                    ? 'border-primary bg-primary-50 text-primary'
-                    : 'border-border text-text-secondary hover:border-primary-light'
-                }`}
-              >
-                <p>{opt.label}</p>
-                <p className="text-xs mt-0.5 opacity-70">{opt.score} marks</p>
-              </button>
-            ))}
-          </div>
-        </div>
       </div>
     </div>
   )

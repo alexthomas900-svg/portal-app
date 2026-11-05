@@ -31,49 +31,35 @@ service cloud.firestore {
     // Users collection
     match /users/{userId} {
       allow read: if isAuth() && (request.auth.uid == userId || isAdmin());
-      allow create: if isAuth() && request.auth.uid == userId;
-      allow update: if isAuth() && (request.auth.uid == userId || isAdmin());
+      allow create: if isAuth() && request.auth.uid == userId && request.resource.data.role == 'faculty';
+      allow update: if isAdmin() || (
+        isAuth() && request.auth.uid == userId && request.resource.data.role == resource.data.role
+      );
       allow delete: if isAdmin();
     }
 
     // Applications collection
     match /applications/{appId} {
-      // Faculty can read/write their own applications
-      allow create: if isFaculty();
-      allow read: if isAuth() && (
-        resource.data.applicantUid == request.auth.uid ||
-        (isInternalReviewer() && resource.data.applicationType in ['promotion', 'contract_renewal']) ||
-        (isExternalReviewer() &&
-          resource.data.applicationType == 'promotion' &&
-          resource.data.promotionType == 'full_professor') ||
-        isAdmin()
-      );
-      allow update: if isAuth() && (
-        (resource.data.applicantUid == request.auth.uid && resource.data.status == 'draft') ||
-        isAdmin()
-      );
-      allow delete: if isAdmin();
+      // Application records are only accessed through the role-filtering backend API.
+      allow read, create, update, delete: if false;
 
       // Internal reviews subcollection
       match /internalReviews/{reviewId} {
-        allow read: if isAdmin() || isInternalReviewer();
-        allow create, update: if isInternalReviewer();
-        allow delete: if isAdmin();
+        allow read, create, update, delete: if false;
       }
 
       // External reviews subcollection
       match /externalReviews/{reviewId} {
-        allow read: if isAdmin();
-        allow create, update: if isExternalReviewer();
-        allow delete: if isAdmin();
+        allow read, create, update, delete: if false;
       }
 
       // Reviewer criterion-linked comments — reviewers and admins only, never applicants
       match /reviewerComments/{commentId} {
-        allow read: if isAdmin() || isInternalReviewer() || isExternalReviewer();
-        allow create: if isInternalReviewer() || isExternalReviewer() || isAdmin();
-        allow update: if isAdmin();
-        allow delete: if isAdmin();
+        allow read, create, update, delete: if false;
+      }
+
+      match /{subcollection}/{document=**} {
+        allow read, write: if false;
       }
     }
 

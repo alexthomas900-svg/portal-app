@@ -1,12 +1,6 @@
 import type { Application, EligibilityResult } from '@/types'
 import { checkEligibility } from '@/utils/eligibility'
-import {
-  TEACHING_SCORES,
-  EFFORTS_SCORES,
-  SCHOLARSHIP_SCORES,
-  SERVICES_SCORES,
-  formatApplicationTypeLabel,
-} from '@/types'
+import { formatApplicationTypeLabel } from '@/types'
 
 import { CheckCircle2, XCircle, AlertTriangle } from 'lucide-react'
 
@@ -17,12 +11,6 @@ interface Props {
 
 export default function DeclarationStep({ application, onAccept }: Props) {
   const eligibility: EligibilityResult = checkEligibility(application)
-
-  const teachingScore = TEACHING_SCORES[application.teachingEffectiveness.overallRating]
-  const effortsScore = EFFORTS_SCORES[application.effortsToImprove.overallRating]
-  const scholarshipScore = SCHOLARSHIP_SCORES[application.scholarship.overallRating]
-  const servicesScore = SERVICES_SCORES[application.services.overallRating]
-  const totalScore = teachingScore + effortsScore + scholarshipScore + servicesScore
 
   const StatusIcon = eligibility.status === 'eligible'
     ? CheckCircle2
@@ -45,9 +33,9 @@ export default function DeclarationStep({ application, onAccept }: Props) {
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-semibold text-text mb-1">Review & Declaration</h3>
+        <h3 className="text-lg font-semibold text-text mb-1">Declaration</h3>
         <p className="text-sm text-text-secondary">
-          Review your eligibility status and scores before final submission.
+          Confirm the information provided is accurate before final submission.
         </p>
         <p className="text-xs text-text-dim mt-1">Workflow: {formatApplicationTypeLabel(application.applicationType)}</p>
       </div>
@@ -102,38 +90,6 @@ export default function DeclarationStep({ application, onAccept }: Props) {
             ))}
           </ul>
         )}
-      </div>
-
-      {/* Scores Summary */}
-      <div className="card p-4">
-        <h4 className="text-sm font-semibold text-text mb-3">Scoring Summary</h4>
-        <div className="space-y-2">
-          {[
-            { label: 'Teaching Effectiveness', score: teachingScore, max: 45 },
-            { label: 'Efforts to Improve', score: effortsScore, max: 10 },
-            { label: 'Scholarship', score: scholarshipScore, max: 25 },
-            { label: 'Services', score: servicesScore, max: 20 },
-          ].map((item) => (
-            <div key={item.label} className="flex items-center justify-between text-sm">
-              <span className="text-text-secondary">{item.label}</span>
-              <div className="flex items-center gap-2">
-                <div className="w-24 h-2 bg-border rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-primary rounded-full"
-                    style={{ width: `${(item.score / item.max) * 100}%` }}
-                  />
-                </div>
-                <span className="text-text font-medium w-14 text-right">
-                  {item.score}/{item.max}
-                </span>
-              </div>
-            </div>
-          ))}
-          <div className="flex items-center justify-between text-sm pt-2 border-t border-border">
-            <span className="text-text font-semibold">Total</span>
-            <span className="text-primary font-bold">{totalScore}/100</span>
-          </div>
-        </div>
       </div>
 
       {/* Declaration */}

@@ -83,9 +83,9 @@ export default function ExternalDashboard() {
             <div key={app.id} className="card p-4 sm:p-5">
               <div className="flex items-center justify-between gap-4">
                 <div className="min-w-0">
-                  <h3 className="text-sm font-semibold text-text">{app.applicantName}</h3>
+                  <h3 className="text-sm font-semibold text-text">Assigned Professor application</h3>
                   <p className="text-xs text-text-secondary">
-                    Full Professor Promotion · {app.personalInfo.department}
+                    Reference {app.id}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">

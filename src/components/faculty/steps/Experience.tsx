@@ -18,6 +18,7 @@ export default function ExperienceStep({ data, onChange }: Props) {
         to: '',
         isCurrent: false,
         type: 'teaching',
+        institutionType: 'higher_education',
       },
     ])
   }
@@ -36,7 +37,7 @@ export default function ExperienceStep({ data, onChange }: Props) {
       <div>
         <h3 className="text-lg font-semibold text-text mb-1">Experience</h3>
         <p className="text-sm text-text-secondary">
-          Add all teaching, research, and professional experience entries.
+          Add your experience. Only higher education institution service counts toward promotion experience; classify each institution accurately.
         </p>
       </div>
 
@@ -82,6 +83,17 @@ export default function ExperienceStep({ data, onChange }: Props) {
                 onChange={(e) => updateItem(index, 'designation', e.target.value)}
                 placeholder="e.g., Assistant Professor"
               />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-text mb-1.5">Institution Type</label>
+              <select
+                value={entry.institutionType ?? (entry.type === 'industry' ? 'other' : 'higher_education')}
+                onChange={(e) => updateItem(index, 'institutionType', e.target.value)}
+              >
+                <option value="higher_education">Higher Education Institution</option>
+                <option value="other">Other Institution</option>
+              </select>
             </div>
 
             <div>

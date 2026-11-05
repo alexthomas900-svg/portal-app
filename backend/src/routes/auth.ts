@@ -35,7 +35,7 @@ router.post('/register', requireAuth, async (req: AuthRequest, res) => {
       return
     }
 
-    const allowedRoles = ['faculty', 'internal_reviewer', 'external_reviewer', 'admin']
+    const allowedRoles = ['faculty']
     if (!allowedRoles.includes(role)) {
       res.status(400).json({ error: 'Invalid role' })
       return
@@ -115,7 +115,7 @@ router.put('/users/:uid/role', requireAuth, async (req: AuthRequest, res) => {
     }
 
     const { role } = req.body as { role: string }
-    const allowedRoles = ['faculty', 'internal_reviewer', 'external_reviewer', 'admin']
+    const allowedRoles = ['faculty', 'internal_reviewer', 'external_reviewer', 'committee_member', 'admin']
     if (!allowedRoles.includes(role)) {
       res.status(400).json({ error: 'Invalid role' })
       return

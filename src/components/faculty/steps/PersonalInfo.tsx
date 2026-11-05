@@ -1,4 +1,4 @@
-import type { ApplicationType, PersonalInfo, PromotionType } from '../../../types'
+import type { PersonalInfo } from '../../../types'
 
 interface Props {
   data: PersonalInfo
@@ -18,34 +18,12 @@ export default function PersonalInfoStep({ data, onChange }: Props) {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium text-text mb-1.5">
-            Workflow <span className="text-danger">*</span>
-          </label>
-          <select
-            value={data.applicationType}
-            onChange={(e) => update('applicationType', e.target.value as ApplicationType)}
-          >
-            <option value="promotion">Promotion Application</option>
-            <option value="contract_renewal">Contract Renewal Report</option>
-            <option value="self_evaluation">Regular Self-Evaluation Report</option>
-          </select>
+        <div className="sm:col-span-2 p-3 rounded-lg bg-surface-alt text-sm text-text-secondary">
+          Workflow: <strong className="text-text">{data.applicationType.replace(/_/g, ' ')}</strong>
+          {data.applicationType === 'promotion' && (
+            <> · Applying for <strong className="text-text">{data.promotionType.replace(/_/g, ' ')}</strong></>
+          )}
         </div>
-
-        {data.applicationType === 'promotion' && (
-          <div>
-            <label className="block text-sm font-medium text-text mb-1.5">
-              Applying For <span className="text-danger">*</span>
-            </label>
-            <select
-              value={data.promotionType}
-              onChange={(e) => update('promotionType', e.target.value as PromotionType)}
-            >
-              <option value="associate_professor">Associate Professor</option>
-              <option value="full_professor">Full Professor</option>
-            </select>
-          </div>
-        )}
 
         <div>
           <label className="block text-sm font-medium text-text mb-1.5">
