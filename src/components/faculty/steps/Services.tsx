@@ -17,10 +17,6 @@ export default function ServicesStep({ data, onChange }: Props) {
         <p className="text-sm text-text-secondary">Describe your service contributions. Ratings and evidence review are confidential.</p>
       </div>
 
-      <div className="p-3 rounded-lg bg-warning-light border border-yellow-200 text-sm text-warning">
-        <strong>Note:</strong> Service starts as <em>Deficient</em> and is upgraded based on uploaded evidence (committee letters, service proofs).
-      </div>
-
       <div className="space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>

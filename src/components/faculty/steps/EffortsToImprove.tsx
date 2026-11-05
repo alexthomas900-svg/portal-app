@@ -18,10 +18,6 @@ export default function EffortsToImproveStep({ data, onChange }: Props) {
       </div>
 
       <div className="space-y-4">
-        <div className="p-3 rounded-lg bg-warning-light border border-yellow-200 text-sm text-warning">
-          <strong>Note:</strong> Upload professional development evidence in the Document Upload section. Ratings are confidential.
-        </div>
-
         <div>
           <label className="block text-sm font-medium text-text mb-1.5">Teaching Innovation</label>
           <textarea

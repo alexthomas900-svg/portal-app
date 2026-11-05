@@ -18,7 +18,7 @@ export default function ScholarshipStep({ data, onChange }: Props) {
       </div>
 
       <div className="p-3 rounded-lg bg-warning-light border border-yellow-200 text-sm text-warning">
-        <strong>Note:</strong> Scholarly activity starts as <em>Deficient</em> and is upgraded based on verified publications, conference proofs, and other evidence uploaded below.
+        <strong>Note:</strong> Describe your research and scholarly contributions, including publications, conference presentations, grants, editorial work, awards, and student supervision. Add publications in the Publications section and upload supporting evidence in Document Upload. Ratings and evidence assessments are confidential.
       </div>
 
       <div className="space-y-4">

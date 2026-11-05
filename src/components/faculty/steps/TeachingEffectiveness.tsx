@@ -23,7 +23,7 @@ export default function TeachingStep({ data, onChange, applicationId, courseOutl
 
       <div className="space-y-4">
         <div className="p-3 rounded-lg bg-warning-light border border-yellow-200 text-sm text-warning">
-          <strong>Note:</strong> Applicant ratings are confidential and are not entered in this section.
+          <strong>Note:</strong> Describe your teaching and learning approach using Fink’s Significant Learning Taxonomy and Bloom’s cognitive levels. Upload one sample SLO document and at least two course outlines; student feedback files are optional and may be uploaded in multiples.
         </div>
 
         <div>
