@@ -491,11 +491,18 @@ router.put('/:id', requireAuth, async (req: AuthRequest, res) => {
         applicantEmail: existing.applicantEmail,
         applicationType: existing.applicationType,
         promotionType: existing.promotionType,
-        cycleId: existing.cycleId,
-        academicYear: existing.academicYear,
+        // Applications created outside a cycle (e.g. the seeded demo drafts)
+        // have neither field, and Firestore rejects `undefined` values.
+        cycleId: existing.cycleId ?? null,
+        academicYear: existing.academicYear ?? null,
         createdAt: existing.createdAt,
         status: existing.status,
-        submittedAt: existing.submittedAt,
+        // `submittedAt` is never initialized when an application is first
+        // created (see buildEmptyApplication), so it's `undefined` here for
+        // any draft that hasn't been submitted yet. Firestore rejects
+        // `undefined` values outright, which broke saving a brand-new
+        // draft's very first edit.
+        submittedAt: existing.submittedAt ?? null,
         updatedAt: FieldValue.serverTimestamp(),
       },
       { merge: false },

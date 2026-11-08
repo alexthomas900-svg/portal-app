@@ -54,3 +54,6 @@ jobs:
       - name: Trigger Render backend deploy
         if: ${{ env.RENDER_DEPLOY_HOOK_URL != '' }}
         run: curl --fail --silent --show-error --request POST "$RENDER_DEPLOY_HOOK_URL"
+
+      - name: Deploy Firestore and Storage security rules
+        run: npx firebase-tools deploy --only firestore:rules,storage --project "$FIREBASE_PROJECT_ID" --token "$FIREBASE_TOKEN" --non-interactive
