@@ -71,7 +71,7 @@ async function ensureFacultyProfile(session: Session, displayName: string, depar
 }
 
 function fakeDoc(name: string) {
-  return { name, url: `https://example.com/demo-docs/${name}`, path: `demo/${name}`, uploadedAt: new Date().toISOString() }
+  return { name, url: '/sample-document.pdf', path: `demo/${name}`, uploadedAt: new Date().toISOString() }
 }
 
 interface CycleDef {

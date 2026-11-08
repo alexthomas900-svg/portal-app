@@ -21,6 +21,7 @@ jobs:
       FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
       RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
       VITE_API_URL: ${{ secrets.VITE_API_URL || 'https://portal-app-0wv4.onrender.com' }}
+      VITE_DISABLE_FILE_STORAGE: 'true'
 
     steps:
       - name: Checkout repository
@@ -55,5 +56,5 @@ jobs:
         if: ${{ env.RENDER_DEPLOY_HOOK_URL != '' }}
         run: curl --fail --silent --show-error --request POST "$RENDER_DEPLOY_HOOK_URL"
 
-      - name: Deploy Firestore and Storage security rules
-        run: npx firebase-tools deploy --only firestore:rules,storage --project "$FIREBASE_PROJECT_ID" --token "$FIREBASE_TOKEN" --non-interactive
+      - name: Deploy Firestore security rules
+        run: npx firebase-tools deploy --only firestore:rules --project "$FIREBASE_PROJECT_ID" --token "$FIREBASE_TOKEN" --non-interactive

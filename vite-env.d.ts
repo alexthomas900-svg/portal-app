@@ -11,6 +11,7 @@ interface ImportMetaEnv {
   readonly VITE_DEMO_EMAIL?: string
   readonly VITE_DEMO_PASSWORD?: string
   readonly VITE_ENABLE_DEMO_SEED?: string
+  readonly VITE_DISABLE_FILE_STORAGE?: string
 }
 
 interface ImportMeta {

@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { Upload, File, X, Loader2 } from 'lucide-react'
-import { uploadDocument } from '../../services/storage'
+import { fileStorageDisabled, uploadDocument } from '../../services/storage'
 import type { DocumentFile } from '../../types'
 
 interface FileUploadProps {
@@ -118,6 +118,12 @@ export default function FileUpload({
         onChange={(e) => handleFiles(e.target.files)}
         className="hidden"
       />
+
+      {fileStorageDisabled && (
+        <p className="text-xs text-text-dim mt-1">
+          Demo site: the file's name is recorded, but the file is not stored. Opening it shows a sample PDF.
+        </p>
+      )}
 
       {error && <p className="text-xs text-danger mt-1">{error}</p>}
     </div>

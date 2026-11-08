@@ -21,6 +21,7 @@ jobs:
       FIREBASE_PROJECT_ID: fcportal-569e5
       FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
       VITE_API_URL: ${{ secrets.VITE_API_URL || 'https://portal-app-0wv4.onrender.com' }}
+      VITE_DISABLE_FILE_STORAGE: 'true'
 
     steps:
       - name: Checkout repository
