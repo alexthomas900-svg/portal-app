@@ -98,7 +98,10 @@ router.get('/users', requireAuth, async (req: AuthRequest, res) => {
     }
 
     const snap = await db.collection('users').get()
-    res.json(snap.docs.map((d) => d.data()))
+    res.json(snap.docs.map((d) => {
+      const data = d.data()
+      return { ...data, createdAt: data.createdAt?.toDate?.().toISOString() ?? data.createdAt }
+    }))
   } catch (err) {
     console.error('GET /api/auth/users error:', err)
     res.status(500).json({ error: 'Failed to fetch users' })
