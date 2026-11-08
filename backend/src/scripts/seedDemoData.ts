@@ -239,6 +239,7 @@ function sharedSections(def: FacultyDef) {
       courseOutlines: [fakeDoc('course-outline-1.pdf'), fakeDoc('course-outline-2.pdf')],
       assignments: [fakeDoc('assignment-sample.pdf')],
       teachingSupportDocs: [fakeDoc('teaching-support.pdf')],
+      updatedCV: fakeDoc('updated-cv.pdf'),
     },
     effortsToImprove: {
       innovations: 'Introduced flipped-classroom delivery for core courses, moving lecture content to recorded modules and using class time for applied problem-solving.',

@@ -16,6 +16,7 @@ import {
 import ConflictDeclaration from './ConflictDeclaration'
 import AssessmentSummary from './AssessmentSummary'
 import ReviewerMarking from './ReviewerMarking'
+import ApplicantDocuments from './ApplicantDocuments'
 import PublicationChecks from './PublicationChecks'
 
 const CRITERION_PROMPT_HELPERS: Record<string, string[]> = {
@@ -276,6 +277,7 @@ export default function ReviewForm() {
         onChange={(sectionMarks) => updateReview('sectionMarks', sectionMarks)}
         onSave={() => void handleSave()}
       />
+      <ApplicantDocuments app={app} />
 
       {/* Publication verification flags */}
       {flaggedPublications.length > 0 && (
