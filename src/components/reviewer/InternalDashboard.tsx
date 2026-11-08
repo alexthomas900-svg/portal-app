@@ -3,12 +3,16 @@ import { useNavigate } from 'react-router-dom'
 import { ClipboardCheck, Eye } from 'lucide-react'
 import { getSubmittedApplications } from '../../services/applications'
 import StatusBadge from '../shared/StatusBadge'
-import { preliminaryTotal } from './AssessmentSummary'
+import { marksTotal } from './AssessmentSummary'
+import { getMyInternalReview } from '../../services/reviews'
+import { useAuth } from '../../contexts/AuthContext'
 import { checkEligibility } from '../../utils/eligibility'
 import { formatApplicationTypeLabel, formatPromotionLabel, type Application } from '../../types'
 
 export default function InternalDashboard() {
+  const { user } = useAuth()
   const [applications, setApplications] = useState<Application[]>([])
+  const [totals, setTotals] = useState<Record<string, number | null>>({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const navigate = useNavigate()
@@ -18,10 +22,10 @@ export default function InternalDashboard() {
 
     const loadApplications = async () => {
       try {
-        const apps = await getSubmittedApplications()
-        if (active) {
-          setApplications(apps.filter((app) => app.applicationType !== 'self_evaluation'))
-        }
+        const apps = (await getSubmittedApplications()).filter((app) => app.applicationType !== 'self_evaluation')
+        if (active) setApplications(apps)
+        const reviews = await Promise.all(apps.map((app) => getMyInternalReview(app.id, user?.uid ?? '').catch(() => null)))
+        if (active) setTotals(Object.fromEntries(apps.map((app, index) => [app.id, marksTotal(reviews[index]?.sectionMarks)])))
       } catch (err) {
         console.error('Failed to load internal reviewer applications:', err)
         if (active) {
@@ -38,7 +42,7 @@ export default function InternalDashboard() {
     return () => {
       active = false
     }
-  }, [])
+  }, [user?.uid])
 
   if (loading) {
     return (
@@ -112,7 +116,9 @@ export default function InternalDashboard() {
                 </div>
                 <div className="flex items-center gap-3 shrink-0">
                   <StatusBadge status={checkEligibility(app).status} />
-                  <span className="text-sm font-semibold text-primary">{preliminaryTotal(app)}/100</span>
+                  <span className="text-sm font-semibold text-primary">
+                    {totals[app.id] === undefined || totals[app.id] === null ? 'Not marked' : `${totals[app.id]}/100`}
+                  </span>
                   <button className="btn-secondary btn-sm">
                     <Eye className="w-3.5 h-3.5" />
                     Review

@@ -377,6 +377,7 @@ async function submitInternalReview(session: Session, applicationId: string, rec
       researchComments: 'Research statement is coherent and sets out a credible forward trajectory.',
       overallComments: 'A strong file overall; recommended for advancement.',
       recommendation,
+      sectionMarks: { teaching: 36, efforts: 8, scholarship: 15, services: 16 },
     })
     await api(session, 'POST', `/api/reviews/internal/${applicationId}/${session.uid}/submit`, {})
     console.log(`  internal review submitted by ${session.email}`)

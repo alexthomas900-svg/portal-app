@@ -2,12 +2,15 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Save, Loader2, CheckCircle2, AlertCircle, ChevronDown, ChevronUp, Bot, MessageSquarePlus } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
-import { getApplication, getReviewerReport, runEvaluation, getReviewerComments, addReviewerComment, verifyAllPublications } from '../../services/applications'
+import { getApplication, getReviewerReport, runEvaluation, getReviewerComments, addReviewerComment, reviewPublication, verifyAllPublications, type PublicationReview } from '../../services/applications'
 import { getMyInternalReview, createInternalReview, saveInternalReview, submitInternalReview } from '../../services/reviews'
 import {
   formatApplicationTypeLabel,
   formatPromotionLabel,
+  SECTION_MAX_MARKS,
   type Application,
+  type MarkedSection,
+  type SectionMarks,
   type InternalReview,
   type ReviewRecommendation,
   type EvaluationReport,
@@ -81,6 +84,15 @@ const RECOMMENDATIONS: { value: ReviewRecommendation; label: string; color: stri
   { value: 'not_recommended', label: 'Not Recommended', color: 'border-danger bg-danger-light text-danger' },
 ]
 
+const SECTION_FOR_COMMENTS: Partial<Record<string, MarkedSection>> = {
+  teachingComments: 'teaching',
+  effortsComments: 'efforts',
+  scholarshipComments: 'scholarship',
+  servicesComments: 'services',
+}
+
+const EMPTY_MARKS: SectionMarks = { teaching: null, efforts: null, scholarship: null, services: null }
+
 export default function ReviewForm() {
   const { id } = useParams<{ id: string }>()
   const { user, profile } = useAuth()
@@ -112,6 +124,17 @@ export default function ReviewForm() {
       setPublicationCheckError('The publication check could not be completed. Please try again.')
     } finally {
       setCheckingPublications(false)
+    }
+  }
+
+  const handlePublicationReview = async (publicationId: string, publicationReview: PublicationReview) => {
+    if (!id) return
+    setPublicationCheckError('')
+    try {
+      const publications = await reviewPublication(id, publicationId, publicationReview)
+      setApp((current) => (current ? { ...current, publications } : current))
+    } catch (err) {
+      setPublicationCheckError(err instanceof Error ? err.message : 'Could not save the publication review.')
     }
   }
 
@@ -254,7 +277,7 @@ export default function ReviewForm() {
         </p>
       </div>
 
-      <AssessmentSummary app={app} report={report} />
+      <AssessmentSummary app={app} report={report} marks={review.sectionMarks} />
 
       {/* Publication verification flags */}
       {flaggedPublications.length > 0 && (
@@ -393,6 +416,7 @@ export default function ReviewForm() {
                   checking={checkingPublications}
                   error={publicationCheckError}
                   onRecheck={() => void checkPublications(app.id)}
+                  onReview={(publicationId, publicationReview) => void handlePublicationReview(publicationId, publicationReview)}
                 />
               )}
               <textarea
@@ -406,6 +430,31 @@ export default function ReviewForm() {
               <p className="text-xs text-text-dim mt-1">
                 {(review[section.key] as string).split(/\s+/).filter(Boolean).length}/200 words
               </p>
+
+              {SECTION_FOR_COMMENTS[section.key] && (() => {
+                const markedSection = SECTION_FOR_COMMENTS[section.key]!
+                const marks = review.sectionMarks ?? EMPTY_MARKS
+                return (
+                  <label className="flex items-center gap-2 mt-3 text-sm font-medium text-text">
+                    Marks
+                    <input
+                      type="number"
+                      min={0}
+                      max={SECTION_MAX_MARKS[markedSection]}
+                      step="0.5"
+                      aria-label={`${section.label} marks`}
+                      value={marks[markedSection] ?? ''}
+                      disabled={isSubmitted}
+                      onChange={(e) => updateReview('sectionMarks', {
+                        ...marks,
+                        [markedSection]: e.target.value === '' ? null : Number(e.target.value),
+                      })}
+                      style={{ width: '6rem' }}
+                    />
+                    <span className="text-text-secondary font-normal whitespace-nowrap">out of {SECTION_MAX_MARKS[markedSection]}</span>
+                  </label>
+                )
+              })()}
 
               {/* Prompt helpers */}
               {prompts.length > 0 && (

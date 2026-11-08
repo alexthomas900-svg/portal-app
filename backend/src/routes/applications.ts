@@ -3,7 +3,14 @@ import { db } from '../firebase-admin.js'
 import type { AuthRequest } from '../middleware/auth.js'
 import { requireAuth } from '../middleware/auth.js'
 import { FieldValue } from 'firebase-admin/firestore'
-import { isIndexed, verifyPublication } from '../services/publicationVerification.js'
+import {
+  MANUAL_SOURCES,
+  applyManualResults,
+  isIndexed,
+  verifyPublication,
+  type ManualSource,
+  type PublicationVerification,
+} from '../services/publicationVerification.js'
 import { evaluateApplication } from '../services/rubricScoring.js'
 import { createNotification, recordAudit } from '../services/activityLog.js'
 
@@ -117,7 +124,7 @@ async function verifyAllPublications(applicationId: string): Promise<Array<Recor
         journalName: String(publication.journalName ?? ''),
         year: Number(publication.year) || undefined,
         authorNames: Array.isArray(publication.authorNames) ? publication.authorNames.map(String) : [],
-      })
+      }, publication.verification as PublicationVerification | undefined)
       return { ...publication, verification, recognized: isIndexed(verification) }
     })))
   }
@@ -684,13 +691,61 @@ router.delete('/:id', requireAuth, async (req: AuthRequest, res) => {
   }
 })
 
+async function canReviewPublications(applicationId: string, uid: string): Promise<boolean> {
+  const role = await getCallerRole(uid)
+  return role === 'admin' || (role === 'internal_reviewer' && await isReviewerAssigned(applicationId, uid, role))
+}
+
+// POST /api/applications/:id/publications/:pubId/manual-review — record portal results and category
+router.post('/:id/publications/:pubId/manual-review', requireAuth, async (req: AuthRequest, res) => {
+  try {
+    if (!(await canReviewPublications(req.params.id, req.uid!))) {
+      res.status(403).json({ error: 'Assigned reviewer or admin access required' })
+      return
+    }
+    const { sources = {}, category } = req.body as { sources?: Record<string, unknown>; category?: unknown }
+    const sourcesValid = Object.entries(sources).every(([source, state]) =>
+      MANUAL_SOURCES.includes(source as ManualSource) && ['found', 'not_found', 'manual'].includes(String(state)))
+    if (!sourcesValid || ![undefined, null, 'Q1', 'Q2', 'Q3'].includes(category as string | null | undefined)) {
+      res.status(400).json({ error: 'Invalid publication review' })
+      return
+    }
+
+    const ref = db.collection('applications').doc(req.params.id)
+    const snapshot = await ref.get()
+    const publications = (snapshot.data()?.publications as Array<Record<string, unknown>> | undefined) ?? []
+    const index = publications.findIndex((publication) => publication.id === req.params.pubId)
+    if (index === -1) {
+      res.status(404).json({ error: 'Publication not found' })
+      return
+    }
+    const publication = publications[index]!
+    const previous = publication.verification as PublicationVerification | undefined
+    if (!previous?.sources.some((source) => source.source === 'HEC')) {
+      res.status(409).json({ error: 'Run the publication check first' })
+      return
+    }
+
+    const verification = applyManualResults(previous, sources as Partial<Record<ManualSource, 'found' | 'not_found' | 'manual'>>)
+    publications[index] = {
+      ...publication,
+      verification,
+      recognized: isIndexed(verification),
+      ...(category === undefined ? {} : { reviewerCategory: category }),
+    }
+    await ref.update({ publications, updatedAt: FieldValue.serverTimestamp() })
+    await recordAudit(req.uid!, 'publication_manually_reviewed', req.params.id, { publicationId: req.params.pubId, sources, category: category ?? null })
+    res.json({ publications })
+  } catch (err) {
+    console.error('POST /api/applications/:id/publications/:pubId/manual-review error:', err)
+    res.status(500).json({ error: 'Failed to save publication review' })
+  }
+})
+
 // POST /api/applications/:id/publications/verify-all — check every publication (reviewers/admin)
 router.post('/:id/publications/verify-all', requireAuth, async (req: AuthRequest, res) => {
   try {
-    const role = await getCallerRole(req.uid!)
-    const allowed = role === 'admin' ||
-      (role === 'internal_reviewer' && await isReviewerAssigned(req.params.id, req.uid!, role))
-    if (!allowed) {
+    if (!(await canReviewPublications(req.params.id, req.uid!))) {
       res.status(403).json({ error: 'Assigned reviewer or admin access required' })
       return
     }
@@ -957,9 +1012,10 @@ function stripApplicantOnlyFields(data: Record<string, unknown>): Record<string,
   delete result.conflictExplanation
   if (Array.isArray(result.publications)) {
     result.publications = (result.publications as Array<Record<string, unknown>>).map((publication) => {
-      const { verification, recognized, ...rest } = publication
+      const { verification, recognized, reviewerCategory, ...rest } = publication
       void verification
       void recognized
+      void reviewerCategory
       return rest
     })
   }

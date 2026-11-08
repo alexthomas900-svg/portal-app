@@ -7,6 +7,22 @@ import { createNotification, recordAudit } from '../services/activityLog.js'
 
 const router = Router()
 
+const SECTION_MAX_MARKS = { teaching: 45, efforts: 10, scholarship: 25, services: 20 } as const
+type MarkedSection = keyof typeof SECTION_MAX_MARKS
+const MARKED_SECTIONS = Object.keys(SECTION_MAX_MARKS) as MarkedSection[]
+
+// Returns cleaned marks, or null if any mark is outside its section's range.
+function parseSectionMarks(value: unknown): Record<MarkedSection, number | null> | null {
+  const input = (value ?? {}) as Record<string, unknown>
+  const marks = {} as Record<MarkedSection, number | null>
+  for (const section of MARKED_SECTIONS) {
+    const mark = input[section] ?? null
+    if (mark !== null && (typeof mark !== 'number' || !Number.isFinite(mark) || mark < 0 || mark > SECTION_MAX_MARKS[section])) return null
+    marks[section] = mark as number | null
+  }
+  return marks
+}
+
 async function roleOf(uid: string): Promise<string | null> {
   const profile = await db.collection('users').doc(uid).get()
   return profile.exists ? String(profile.data()?.role ?? '') : null
@@ -93,6 +109,7 @@ router.post('/internal/:applicationId', requireAuth, async (req: AuthRequest, re
       researchComments: '',
       overallComments: '',
       recommendation: 'recommended',
+      sectionMarks: { teaching: null, efforts: null, scholarship: null, services: null },
       status: 'draft',
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
@@ -148,8 +165,14 @@ router.put('/internal/:applicationId/:reviewId', requireAuth, async (req: AuthRe
       res.status(400).json({ error: 'Review comments and recommendation are invalid' })
       return
     }
+    const sectionMarks = parseSectionMarks(body.sectionMarks)
+    if (!sectionMarks) {
+      res.status(400).json({ error: 'Marks must be between 0 and the maximum for each section' })
+      return
+    }
     const updates = Object.fromEntries(fields.map((key) => [key, body[key]]))
     updates.recommendation = body.recommendation
+    updates.sectionMarks = sectionMarks
     await ref.set({ ...updates, updatedAt: FieldValue.serverTimestamp() }, { merge: true })
 
     await recordAudit(req.uid!, 'reviewer_assessment_saved', applicationId)
@@ -191,6 +214,11 @@ router.post('/internal/:applicationId/:reviewId/submit', requireAuth, async (req
     })
     if (incomplete) {
       res.status(400).json({ error: 'Complete every required comment in 200 words or fewer before submitting' })
+      return
+    }
+    const marks = parseSectionMarks(content.sectionMarks)
+    if (!marks || MARKED_SECTIONS.some((section) => marks[section] === null)) {
+      res.status(400).json({ error: 'Enter marks for Teaching, Efforts, Scholarship and Services before submitting' })
       return
     }
     await reviewRef.update({ status: 'submitted', submittedAt: FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp() })

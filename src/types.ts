@@ -57,6 +57,7 @@ export interface ExperienceEntry {
 
 export type JournalIndexing = 'HEC' | 'Scopus' | 'WoS' | 'DOAJ' | 'CNKI' | 'Other'
 export type JournalQuartile = 'Q1' | 'Q2' | 'Q3' | 'Unranked'
+export type PublicationCategory = 'Q1' | 'Q2' | 'Q3'
 
 // ── Publication Verification ──
 export type PublicationVerificationStatus = 'verified' | 'unverified' | 'unknown'
@@ -67,6 +68,7 @@ export interface PublicationVerificationSource {
   source: VerificationSourceName
   state: VerificationSourceState
   matched: boolean
+  manuallyReviewed?: boolean
   checkedAt: string
   referenceUrl?: string
   notes?: string
@@ -91,6 +93,7 @@ export interface Publication {
   authorNames: string[]
   indexing: JournalIndexing
   recognized: boolean
+  reviewerCategory?: PublicationCategory | null
   quartile: JournalQuartile
   apaReference: string
   verification?: PublicationVerification
@@ -432,12 +435,17 @@ export interface InternalReview {
 
   overallComments: string
   recommendation: ReviewRecommendation
+  sectionMarks?: SectionMarks
   status?: 'draft' | 'submitted'
   submittedAt?: string
 
   createdAt: string
   updatedAt: string
 }
+
+export type MarkedSection = 'teaching' | 'efforts' | 'scholarship' | 'services'
+export type SectionMarks = Record<MarkedSection, number | null>
+export const SECTION_MAX_MARKS: Record<MarkedSection, number> = { teaching: 45, efforts: 10, scholarship: 25, services: 20 }
 
 export type ExternalRecommendation = 'recommended' | 'not_recommended'
 

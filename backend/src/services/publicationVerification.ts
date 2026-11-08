@@ -9,6 +9,7 @@ export interface PublicationVerificationSource {
   checkedAt: string
   notes: string
   referenceUrl?: string
+  manuallyReviewed?: boolean
 }
 
 export interface PublicationVerification {
@@ -36,6 +37,17 @@ interface Candidate {
 const USER_AGENT = 'FCPortal-Verification/1.0'
 const TIMEOUT_MS = 8000
 const INDEXING_SOURCES: VerificationSourceName[] = ['DOAJ', 'SCOPUS', 'WOS', 'HEC', 'CNKI']
+
+// These portals have no free API, so a reviewer records the result by hand.
+export const MANUAL_SOURCES = ['SCOPUS', 'WOS', 'HEC', 'CNKI'] as const
+export type ManualSource = (typeof MANUAL_SOURCES)[number]
+
+const MANUAL_PORTALS: Record<ManualSource, { label: string; url: string }> = {
+  SCOPUS: { label: 'Scopus', url: 'https://www.scopus.com/' },
+  WOS: { label: 'Web of Science', url: 'https://www.webofscience.com/' },
+  HEC: { label: 'HEC Journal Recognition System', url: 'https://hjrs.hec.gov.pk/' },
+  CNKI: { label: 'CNKI', url: 'https://oversea.cnki.net/' },
+}
 
 function normalize(value: string): string {
   return value.normalize('NFKD').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim()
@@ -109,31 +121,6 @@ async function searchDoaj(input: PublicationInput): Promise<Candidate[]> {
   }))
 }
 
-async function searchScopus(input: PublicationInput, apiKey: string): Promise<Candidate[]> {
-  const url = `https://api.elsevier.com/content/search/scopus?count=5&query=${encodeURIComponent(`TITLE("${normalize(input.articleTitle)}")`)}`
-  const data = await getJson(url, { 'X-ELS-APIKey': apiKey })
-  return (((data['search-results'] as any)?.entry as any[]) ?? [])
-    .filter((entry) => entry['dc:title'])
-    .map((entry) => ({
-      title: entry['dc:title'],
-      journal: entry['prism:publicationName'] ?? '',
-      year: Number(String(entry['prism:coverDate'] ?? '').slice(0, 4)) || undefined,
-      authors: entry['dc:creator'] ? [entry['dc:creator']] : [],
-      url: entry['prism:doi'] ? `https://doi.org/${entry['prism:doi']}` : undefined,
-    }))
-}
-
-async function searchWebOfScience(input: PublicationInput, apiKey: string): Promise<Candidate[]> {
-  const url = `https://api.clarivate.com/apis/wos-starter/v1/documents?limit=5&q=${encodeURIComponent(`TI=("${normalize(input.articleTitle)}")`)}`
-  const data = await getJson(url, { 'X-ApiKey': apiKey })
-  return ((data.hits as any[]) ?? []).map((hit) => ({
-    title: hit.title ?? '',
-    journal: hit.source?.sourceTitle ?? '',
-    year: hit.source?.publishYear,
-    authors: (hit.names?.authors ?? []).map((author: any) => author.displayName ?? ''),
-    url: hit.links?.record,
-  }))
-}
 async function checkSource(
   source: VerificationSourceName,
   label: string,
@@ -158,40 +145,58 @@ async function checkSource(
   }
 }
 
-function manualSource(source: VerificationSourceName, notes: string, referenceUrl: string, checkedAt: string): PublicationVerificationSource {
-  return { source, state: 'manual', matched: false, checkedAt, notes, referenceUrl }
+function manualSource(source: ManualSource, checkedAt: string): PublicationVerificationSource {
+  const { label, url } = MANUAL_PORTALS[source]
+  return { source, state: 'manual', matched: false, checkedAt, notes: `${label} needs a manual check.`, referenceUrl: url }
 }
 
-/**
- * Checks one publication against each source that offers authorised access.
- * A failed or missing lookup never counts against the publication: anything
- * not confirmed stays pending for a reviewer to check by hand.
- */
-export async function verifyPublication(input: PublicationInput): Promise<PublicationVerification> {
-  const checkedAt = new Date().toISOString()
-  const scopusKey = process.env.SCOPUS_API_KEY
-  const wosKey = process.env.WOS_API_KEY
-
-  const sources = await Promise.all([
-    checkSource('CROSSREF', 'Crossref', () => searchCrossref(input), input, checkedAt),
-    checkSource('DOAJ', 'DOAJ', () => searchDoaj(input), input, checkedAt),
-    scopusKey
-      ? checkSource('SCOPUS', 'Scopus', () => searchScopus(input, scopusKey), input, checkedAt)
-      : Promise.resolve(manualSource('SCOPUS', 'Scopus needs an institutional API key. Check manually.', 'https://www.scopus.com/', checkedAt)),
-    wosKey
-      ? checkSource('WOS', 'Web of Science', () => searchWebOfScience(input, wosKey), input, checkedAt)
-      : Promise.resolve(manualSource('WOS', 'Web of Science needs an institutional API key. Check manually.', 'https://www.webofscience.com/', checkedAt)),
-    Promise.resolve(manualSource('HEC', 'HEC Journal Recognition System has no public API. Check manually.', 'https://hjrs.hec.gov.pk/', checkedAt)),
-    Promise.resolve(manualSource('CNKI', 'CNKI has no open API. Check manually.', 'https://oversea.cnki.net/', checkedAt)),
-  ])
-
+function summarize(sources: PublicationVerificationSource[], lastCheckedAt: string): PublicationVerification {
   const found = sources.some((source) => source.state === 'found')
   return {
     status: found ? 'verified' : 'unknown',
     sources,
     flagReason: found ? '' : 'Not confirmed automatically. Manual verification required.',
-    lastCheckedAt: checkedAt,
+    lastCheckedAt,
   }
+}
+
+/**
+ * Checks one publication against the free sources. Anything not confirmed
+ * stays pending for a reviewer, and a reviewer's manual results are kept when
+ * a publication is checked again.
+ */
+export async function verifyPublication(input: PublicationInput, previous?: PublicationVerification): Promise<PublicationVerification> {
+  const checkedAt = new Date().toISOString()
+  const automated = await Promise.all([
+    checkSource('CROSSREF', 'Crossref', () => searchCrossref(input), input, checkedAt),
+    checkSource('DOAJ', 'DOAJ', () => searchDoaj(input), input, checkedAt),
+  ])
+  const manual = MANUAL_SOURCES.map((source) =>
+    previous?.sources.find((item) => item.source === source && item.manuallyReviewed) ?? manualSource(source, checkedAt))
+  return summarize([...automated, ...manual], checkedAt)
+}
+
+export function applyManualResults(
+  verification: PublicationVerification,
+  results: Partial<Record<ManualSource, 'found' | 'not_found' | 'manual'>>,
+): PublicationVerification {
+  const checkedAt = new Date().toISOString()
+  const sources = verification.sources.map((item) => {
+    const state = results[item.source as ManualSource]
+    if (!state) return item
+    if (state === 'manual') return manualSource(item.source as ManualSource, checkedAt)
+    const { label, url } = MANUAL_PORTALS[item.source as ManualSource]
+    return {
+      source: item.source,
+      state,
+      matched: state === 'found',
+      checkedAt,
+      notes: state === 'found' ? `Confirmed in ${label} by manual review.` : `Not found in ${label} by manual review.`,
+      referenceUrl: url,
+      manuallyReviewed: true,
+    }
+  })
+  return summarize(sources, checkedAt)
 }
 
 // Crossref shows an article exists; only an indexing portal counts as recognised.
