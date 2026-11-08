@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Save, Loader2, CheckCircle2, AlertCircle, ChevronDown, ChevronUp, Bot, MessageSquarePlus } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
-import { getApplication, getReviewerReport, runEvaluation, getReviewerComments, addReviewerComment } from '../../services/applications'
+import { getApplication, getReviewerReport, runEvaluation, getReviewerComments, addReviewerComment, verifyAllPublications } from '../../services/applications'
 import { getMyInternalReview, createInternalReview, saveInternalReview, submitInternalReview } from '../../services/reviews'
 import {
   formatApplicationTypeLabel,
@@ -14,6 +14,8 @@ import {
   type ReviewerComment,
 } from '../../types'
 import ConflictDeclaration from './ConflictDeclaration'
+import AssessmentSummary from './AssessmentSummary'
+import PublicationChecks from './PublicationChecks'
 
 const CRITERION_PROMPT_HELPERS: Record<string, string[]> = {
   personalInfoComments: ['Verify completeness of personal information.'],
@@ -96,6 +98,22 @@ export default function ReviewForm() {
   const [savingComment, setSavingComment] = useState<string | null>(null)
   const [conflictDeclared, setConflictDeclared] = useState(false)
   const [formError, setFormError] = useState('')
+  const [checkingPublications, setCheckingPublications] = useState(false)
+  const [publicationCheckError, setPublicationCheckError] = useState('')
+
+  const checkPublications = async (applicationId: string) => {
+    setCheckingPublications(true)
+    setPublicationCheckError('')
+    try {
+      const publications = await verifyAllPublications(applicationId)
+      setApp((current) => (current ? { ...current, publications } : current))
+      setReport(await runEvaluation(applicationId))
+    } catch {
+      setPublicationCheckError('The publication check could not be completed. Please try again.')
+    } finally {
+      setCheckingPublications(false)
+    }
+  }
 
   useEffect(() => {
     if (!id || !user) return
@@ -115,7 +133,13 @@ export default function ReviewForm() {
         setReview(newReview)
       }
       setLoading(false)
+      // Run the automated checks for applications that haven't had them yet.
+      const needsCheck = application?.applicationType === 'promotion' &&
+        application.publications.some((publication) => !publication.verification?.sources.some((source) => source.source === 'CROSSREF'))
+      if (needsCheck) void checkPublications(id)
+      else if (!evalReport) void runEvaluation(id).then(setReport).catch(() => undefined)
     })
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- runs once per application
   }, [id, user, profile])
 
   const handleSave = async () => {
@@ -230,12 +254,14 @@ export default function ReviewForm() {
         </p>
       </div>
 
+      <AssessmentSummary app={app} report={report} />
+
       {/* Publication verification flags */}
       {flaggedPublications.length > 0 && (
         <div className="card p-4 mb-6 border-danger bg-danger-light">
           <div className="flex items-center gap-2 mb-2">
             <AlertCircle className="w-5 h-5 text-danger" />
-            <h3 className="text-sm font-semibold text-danger">Flagged Publications</h3>
+            <h3 className="text-sm font-semibold text-danger">Publications Needing Manual Verification</h3>
           </div>
           <ul className="space-y-1">
             {flaggedPublications.map((pub) => (
@@ -361,6 +387,14 @@ export default function ReviewForm() {
           return (
             <div key={section.key} className="card p-4">
               <label className="block text-sm font-medium text-text mb-2">{section.label}</label>
+              {section.key === 'researchComments' && (
+                <PublicationChecks
+                  publications={app.publications}
+                  checking={checkingPublications}
+                  error={publicationCheckError}
+                  onRecheck={() => void checkPublications(app.id)}
+                />
+              )}
               <textarea
                 value={review[section.key] as string}
                 onChange={(e) => updateReview(section.key, e.target.value)}

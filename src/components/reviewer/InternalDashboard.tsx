@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { ClipboardCheck, Eye } from 'lucide-react'
 import { getSubmittedApplications } from '../../services/applications'
 import StatusBadge from '../shared/StatusBadge'
+import { preliminaryTotal } from './AssessmentSummary'
+import { checkEligibility } from '../../utils/eligibility'
 import { formatApplicationTypeLabel, formatPromotionLabel, type Application } from '../../types'
 
 export default function InternalDashboard() {
@@ -108,10 +110,14 @@ export default function InternalDashboard() {
                     {app.submittedAt ? new Date(app.submittedAt).toLocaleDateString() : '—'}
                   </p>
                 </div>
-                <button className="btn-secondary btn-sm shrink-0">
-                  <Eye className="w-3.5 h-3.5" />
-                  Review
-                </button>
+                <div className="flex items-center gap-3 shrink-0">
+                  <StatusBadge status={checkEligibility(app).status} />
+                  <span className="text-sm font-semibold text-primary">{preliminaryTotal(app)}/100</span>
+                  <button className="btn-secondary btn-sm">
+                    <Eye className="w-3.5 h-3.5" />
+                    Review
+                  </button>
+                </div>
               </div>
             </div>
           ))}

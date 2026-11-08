@@ -60,12 +60,13 @@ export type JournalQuartile = 'Q1' | 'Q2' | 'Q3' | 'Unranked'
 
 // ── Publication Verification ──
 export type PublicationVerificationStatus = 'verified' | 'unverified' | 'unknown'
-export type VerificationSourceName = 'HEC' | 'SCOPUS' | 'WOS' | 'OTHER'
+export type VerificationSourceName = 'CROSSREF' | 'DOAJ' | 'SCOPUS' | 'WOS' | 'HEC' | 'CNKI'
+export type VerificationSourceState = 'found' | 'not_found' | 'manual' | 'error'
 
 export interface PublicationVerificationSource {
   source: VerificationSourceName
+  state: VerificationSourceState
   matched: boolean
-  confidence?: number
   checkedAt: string
   referenceUrl?: string
   notes?: string

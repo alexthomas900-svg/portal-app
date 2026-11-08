@@ -3,7 +3,7 @@ import { db } from '../firebase-admin.js'
 import type { AuthRequest } from '../middleware/auth.js'
 import { requireAuth } from '../middleware/auth.js'
 import { FieldValue } from 'firebase-admin/firestore'
-import { verifyPublication } from '../services/publicationVerification.js'
+import { isIndexed, verifyPublication } from '../services/publicationVerification.js'
 import { evaluateApplication } from '../services/rubricScoring.js'
 import { createNotification, recordAudit } from '../services/activityLog.js'
 
@@ -98,6 +98,31 @@ async function isReviewerAssigned(applicationId: string, uid: string, role: stri
   if (!isAssigned) return false
   const conflict = await db.collection('applications').doc(applicationId).collection('conflicts').doc(uid).get()
   return !conflict.exists || conflict.data()?.resolved === true
+}
+
+// Checks every publication on an application and stores the results.
+async function verifyAllPublications(applicationId: string): Promise<Array<Record<string, unknown>> | null> {
+  const ref = db.collection('applications').doc(applicationId)
+  const snapshot = await ref.get()
+  if (!snapshot.exists) return null
+  const publications = (snapshot.data()!.publications as Array<Record<string, unknown>> | undefined) ?? []
+  if (publications.length === 0) return []
+
+  const checked: Array<Record<string, unknown>> = []
+  // A few at a time, to stay polite to the free public APIs.
+  for (let start = 0; start < publications.length; start += 3) {
+    checked.push(...await Promise.all(publications.slice(start, start + 3).map(async (publication) => {
+      const verification = await verifyPublication({
+        articleTitle: String(publication.articleTitle ?? ''),
+        journalName: String(publication.journalName ?? ''),
+        year: Number(publication.year) || undefined,
+        authorNames: Array.isArray(publication.authorNames) ? publication.authorNames.map(String) : [],
+      })
+      return { ...publication, verification, recognized: isIndexed(verification) }
+    })))
+  }
+  await ref.update({ publications: checked, updatedAt: FieldValue.serverTimestamp() })
+  return checked
 }
 
 // Helper: build empty application template
@@ -607,6 +632,8 @@ router.post('/:id/submit', requireAuth, async (req: AuthRequest, res) => {
     await recordAudit(req.uid!, 'application_submitted', req.params.id, { snapshotId: snapshotRef.id })
     await createNotification(req.uid!, 'submission_confirmation', 'Your application was submitted successfully.', req.params.id)
     res.json({ success: true })
+    // Runs after responding so the applicant isn't kept waiting on external sites.
+    verifyAllPublications(req.params.id).catch((err) => console.error('Publication check after submit failed:', err))
   } catch (err) {
     console.error('POST /api/applications/:id/submit error:', err)
     res.status(500).json({ error: 'Failed to submit application' })
@@ -657,54 +684,25 @@ router.delete('/:id', requireAuth, async (req: AuthRequest, res) => {
   }
 })
 
-// POST /api/applications/:id/publications/:pubId/verify — verify a single publication
-router.post('/:id/publications/:pubId/verify', requireAuth, async (req: AuthRequest, res) => {
+// POST /api/applications/:id/publications/verify-all — check every publication (reviewers/admin)
+router.post('/:id/publications/verify-all', requireAuth, async (req: AuthRequest, res) => {
   try {
     const role = await getCallerRole(req.uid!)
-    const snap = await db.collection('applications').doc(req.params.id).get()
-    if (!snap.exists) {
+    const allowed = role === 'admin' ||
+      (role === 'internal_reviewer' && await isReviewerAssigned(req.params.id, req.uid!, role))
+    if (!allowed) {
+      res.status(403).json({ error: 'Assigned reviewer or admin access required' })
+      return
+    }
+    const publications = await verifyAllPublications(req.params.id)
+    if (!publications) {
       res.status(404).json({ error: 'Application not found' })
       return
     }
-    const data = snap.data()!
-
-    // Applicant can trigger on own draft; reviewers and admins always allowed
-    const isOwner = data.applicantUid === req.uid && role === 'faculty' && data.status === 'draft'
-    const isReviewer = await isReviewerAssigned(req.params.id, req.uid!, role)
-    const isAdmin = role === 'admin'
-    if (!isOwner && !isReviewer && !isAdmin) {
-      res.status(403).json({ error: 'Access denied' })
-      return
-    }
-
-    const publications: Array<Record<string, unknown>> = Array.isArray(data.publications)
-      ? [...(data.publications as Array<Record<string, unknown>>)]
-      : []
-
-    const pubIndex = publications.findIndex((p) => p.id === req.params.pubId)
-    if (pubIndex === -1) {
-      res.status(404).json({ error: 'Publication not found' })
-      return
-    }
-
-    const pub = publications[pubIndex]!
-    const verification = await verifyPublication(
-      String(pub.articleTitle ?? ''),
-      String(pub.journalName ?? ''),
-      String(pub.indexing ?? ''),
-    )
-
-    publications[pubIndex] = { ...pub, verification, recognized: verification.status === 'verified' }
-    await db.collection('applications').doc(req.params.id).update({
-      publications,
-      updatedAt: FieldValue.serverTimestamp(),
-    })
-
-    await recordAudit(req.uid!, 'publication_verified', req.params.id, { publicationId: req.params.pubId })
-    console.info(`Publication ${req.params.pubId} verified by ${req.uid} at ${new Date().toISOString()}`)
-    res.json({ verification })
+    await recordAudit(req.uid!, 'publications_verified', req.params.id, { count: publications.length })
+    res.json({ publications })
   } catch (err) {
-    console.error('POST /api/applications/:id/publications/:pubId/verify error:', err)
+    console.error('POST /api/applications/:id/publications/verify-all error:', err)
     res.status(500).json({ error: 'Verification failed' })
   }
 })
@@ -957,6 +955,14 @@ function stripApplicantOnlyFields(data: Record<string, unknown>): Record<string,
   delete result.snapshotId
   delete result.conflictDeclared
   delete result.conflictExplanation
+  if (Array.isArray(result.publications)) {
+    result.publications = (result.publications as Array<Record<string, unknown>>).map((publication) => {
+      const { verification, recognized, ...rest } = publication
+      void verification
+      void recognized
+      return rest
+    })
+  }
   return result
 }
 
