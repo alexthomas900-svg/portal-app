@@ -8,7 +8,9 @@ function shouldSeed() {
 }
 
 export async function seedDemoDataIfNeeded(profile: UserProfile): Promise<void> {
-  if (!shouldSeed()) return
+  // Only applicants own applications; seeding other roles would list reviewers
+  // and committee members as applicants on the admin dashboard.
+  if (!shouldSeed() || profile.role !== 'faculty') return
 
   const seededKey = `${SEEDED_FLAG_PREFIX}${profile.uid}`
   if (window.localStorage.getItem(seededKey) === '1') return

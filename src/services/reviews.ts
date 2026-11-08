@@ -26,6 +26,10 @@ export async function getMyInternalReview(
   return apiGet<InternalReview | null>(`/api/reviews/internal/${applicationId}/mine`)
 }
 
+export async function submitInternalReview(applicationId: string, reviewId: string): Promise<void> {
+  await apiPost(`/api/reviews/internal/${applicationId}/${reviewId}/submit`, {})
+}
+
 // ── External Reviews ──
 
 export async function saveExternalReview(review: ExternalReview): Promise<void> {
@@ -42,4 +46,8 @@ export async function createExternalReview(
 
 export async function getExternalReviews(applicationId: string): Promise<ExternalReview[]> {
   return apiGet<ExternalReview[]>(`/api/reviews/external/${applicationId}`)
+}
+
+export async function submitExternalReview(applicationId: string, reviewId: string): Promise<void> {
+  await apiPost(`/api/reviews/external/${applicationId}/${reviewId}/submit`, {})
 }

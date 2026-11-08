@@ -3,8 +3,9 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Save, Loader2, CheckCircle2 } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { getApplication } from '../../services/applications'
-import { createExternalReview, saveExternalReview, getExternalReviews } from '../../services/reviews'
+import { createExternalReview, saveExternalReview, getExternalReviews, submitExternalReview } from '../../services/reviews'
 import type { Application, ExternalReview, ExternalRecommendation } from '../../types'
+import ConflictDeclaration from './ConflictDeclaration'
 
 const SECTIONS = [
   { key: 'academicStanding' as const, label: "Applicant's Overall Academic Standing" },
@@ -21,6 +22,8 @@ export default function ExternalReviewForm() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [conflictDeclared, setConflictDeclared] = useState(false)
+  const [formError, setFormError] = useState('')
 
   useEffect(() => {
     if (!id || !user || !profile) return
@@ -42,10 +45,28 @@ export default function ExternalReviewForm() {
   const handleSave = async () => {
     if (!review) return
     setSaving(true)
+    setFormError('')
     try {
       await saveExternalReview(review)
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
+    } catch (saveError) {
+      setFormError(saveError instanceof Error ? saveError.message : 'Failed to save assessment.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleSubmitReview = async () => {
+    if (!review || !id) return
+    setSaving(true)
+    setFormError('')
+    try {
+      await saveExternalReview(review)
+      await submitExternalReview(id, review.id)
+      setReview({ ...review, status: 'submitted', submittedAt: new Date().toISOString() })
+    } catch (submitError) {
+      setFormError(submitError instanceof Error ? submitError.message : 'Failed to submit assessment.')
     } finally {
       setSaving(false)
     }
@@ -72,6 +93,11 @@ export default function ExternalReviewForm() {
     )
   }
 
+  if (conflictDeclared) {
+    return <div className="card p-5 text-sm text-warning">Your conflict declaration is recorded. This assessment is paused until an administrator resolves it.</div>
+  }
+  const isSubmitted = review.status === 'submitted'
+
   return (
     <div className="max-w-3xl mx-auto">
       <button onClick={() => navigate('/external-review')} className="btn-ghost btn-sm mb-4">
@@ -80,11 +106,13 @@ export default function ExternalReviewForm() {
       </button>
 
       {/* Applicant info */}
+      <ConflictDeclaration applicationId={app.id} onDeclared={() => setConflictDeclared(true)} />
+      {isSubmitted && <p className="card p-3 mb-4 text-sm text-success">Assessment submitted and locked.</p>}
+      {formError && <p role="alert" className="mb-4 p-3 rounded bg-danger-light text-danger text-sm">{formError}</p>}
       <div className="card p-5 mb-6">
-        <h1 className="text-lg font-bold text-text mb-1">External Evaluation: {app.applicantName}</h1>
+        <h1 className="text-lg font-bold text-text mb-1">External Evaluation: Assigned Professor application</h1>
         <p className="text-sm text-text-secondary">
-          {app.promotionType === 'associate_professor' ? 'Associate Professor' : 'Full Professor'}{' '}
-          · {app.personalInfo.department}
+          Reference {app.id}
         </p>
         {app.documents.updatedCV && (
           <a
@@ -109,6 +137,7 @@ export default function ExternalReviewForm() {
               placeholder={`Provide evaluation (max 200 words)...`}
               rows={4}
               maxLength={1500}
+              disabled={isSubmitted}
             />
             <p className="text-xs text-text-dim mt-1">
               {review[section.key].split(/\s+/).filter(Boolean).length}/200 words
@@ -129,6 +158,7 @@ export default function ExternalReviewForm() {
               key={rec.value}
               type="button"
               onClick={() => updateReview('overallEvaluation', rec.value)}
+              disabled={isSubmitted}
               className={`p-3 rounded-lg border text-sm font-medium text-center transition-colors ${
                 review.overallEvaluation === rec.value
                   ? rec.color
@@ -143,7 +173,7 @@ export default function ExternalReviewForm() {
 
       {/* Save */}
       <div className="flex justify-end gap-2">
-        <button onClick={handleSave} disabled={saving} className="btn-primary">
+        {!isSubmitted && <button onClick={handleSave} disabled={saving} className="btn-secondary">
           {saving ? (
             <Loader2 className="w-4 h-4 animate-spin" />
           ) : saved ? (
@@ -153,6 +183,8 @@ export default function ExternalReviewForm() {
           )}
           {saved ? 'Saved!' : 'Save Evaluation'}
         </button>
+        }
+        {!isSubmitted && <button onClick={handleSubmitReview} disabled={saving} className="btn-primary">Submit Evaluation</button>}
       </div>
     </div>
   )

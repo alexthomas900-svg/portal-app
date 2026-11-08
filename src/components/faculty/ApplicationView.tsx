@@ -13,8 +13,12 @@ import {
   formatApplicationTypeLabel,
   formatPromotionLabel,
 } from '../../types'
+import { useAuth } from '../../contexts/AuthContext'
+import { printPdfReport } from '../../utils/reports'
+import { generateAPA } from '../../utils/apa'
 
 export default function ApplicationView() {
+  const { role } = useAuth()
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [app, setApp] = useState<Application | null>(null)
@@ -47,11 +51,40 @@ export default function ApplicationView() {
 
   const eligibility = checkEligibility(app)
   const isPromotion = app.applicationType === 'promotion'
-  const totalScore =
+  const isApplicant = role === 'faculty'
+  const totalScore = isApplicant ? 0 :
     TEACHING_SCORES[app.teachingEffectiveness.overallRating] +
     EFFORTS_SCORES[app.effortsToImprove.overallRating] +
     SCHOLARSHIP_SCORES[app.scholarship.overallRating] +
     SERVICES_SCORES[app.services.overallRating]
+  const applicationTitle = isPromotion
+    ? `${formatPromotionLabel(app.promotionType)} Promotion Application`
+    : formatApplicationTypeLabel(app.applicationType)
+  const applicationReportRows = [
+    { label: 'Reference', value: app.id },
+    { label: 'Applicant', value: app.personalInfo.fullName },
+    { label: 'Department', value: app.personalInfo.department },
+    { label: 'Designation', value: app.personalInfo.currentDesignation },
+    { label: 'Status', value: app.status },
+    { label: 'Submitted', value: app.submittedAt ? new Date(app.submittedAt).toLocaleDateString() : 'Not submitted' },
+    { label: 'Qualifications', value: app.qualifications.map((item) => `${item.degree} in ${item.field}, ${item.institution} (${item.year})`).join('\n') },
+    { label: 'Research statement', value: app.researchStatement },
+    { label: 'Uploaded document index', value: Object.entries(app.documents ?? {}).flatMap(([key, value]) =>
+      Array.isArray(value) ? value.map((file) => `${key}: ${file.name}`) : value ? [`${key}: ${(value as { name: string }).name}`] : [],
+    ).join('\n') },
+  ]
+  const annualReportRows = app.annualEvaluation ? [
+    { label: 'Evaluation year', value: app.annualEvaluation.evaluationYear },
+    { label: 'Employment details', value: app.annualEvaluation.employmentDetails },
+    { label: 'Courses taught', value: app.annualEvaluation.coursesTaught },
+    { label: 'Teaching and learning', value: [app.annualEvaluation.teachingStrategies, app.annualEvaluation.assessmentMethods, app.annualEvaluation.teachingInnovations, app.annualEvaluation.teachingAchievements, app.annualEvaluation.teachingReflection].join('\n') },
+    { label: 'Research and publications', value: [app.annualEvaluation.researchActivities, app.annualEvaluation.researchProjects, app.annualEvaluation.conferencePresentations, app.annualEvaluation.researchCollaborations, app.annualEvaluation.researchAchievements].join('\n') },
+    { label: 'Professional development', value: `${app.annualEvaluation.professionalDevelopment}\nCPD hours: ${app.annualEvaluation.cpdHours}` },
+    { label: 'Scholarship and academic contributions', value: `${app.annualEvaluation.booksAndChapters}\n${app.annualEvaluation.academicContributions}` },
+    { label: 'Service and leadership', value: [app.annualEvaluation.departmentalResponsibilities, app.annualEvaluation.universityCommittees, app.annualEvaluation.studentAdvisingAndActivities, app.annualEvaluation.leadershipAndCommunityService, app.annualEvaluation.institutionalEngagement].join('\n') },
+    { label: 'Self-reflection and future goals', value: [app.annualEvaluation.majorAchievements, app.annualEvaluation.challenges, app.annualEvaluation.areasForImprovement, app.annualEvaluation.futureGoals, app.annualEvaluation.supportRequired].join('\n') },
+    { label: 'Supporting evidence', value: app.annualEvaluation.supportingDocuments.map((file) => file.name).join('\n') },
+  ] : []
 
   return (
     <div className="max-w-3xl mx-auto">
@@ -65,11 +98,7 @@ export default function ApplicationView() {
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <h1 className="text-xl font-bold text-text">
-                {isPromotion
-                  ? `${formatPromotionLabel(app.promotionType)} Promotion Application`
-                  : formatApplicationTypeLabel(app.applicationType)}
-              </h1>
+              <h1 className="text-xl font-bold text-text">{applicationTitle}</h1>
               <StatusBadge status={app.status} />
             </div>
             <p className="text-sm text-text-secondary">
@@ -81,18 +110,24 @@ export default function ApplicationView() {
           </div>
 
           <div className="flex gap-2">
-            <button className="btn-secondary btn-sm">
-              <Download className="w-3.5 h-3.5" />
-              Application PDF
+            <button onClick={() => printPdfReport(applicationTitle, applicationReportRows)} className="btn-secondary btn-sm">
+              <Download className="w-3.5 h-3.5" /> Application PDF
             </button>
-            <button className="btn-secondary btn-sm">
-              <FileText className="w-3.5 h-3.5" />
-              Self-Evaluation
-            </button>
+            {app.applicationType === 'self_evaluation' ? (
+              <button onClick={() => printPdfReport('Annual Faculty Self-Evaluation', annualReportRows)} className="btn-secondary btn-sm">
+                <FileText className="w-3.5 h-3.5" /> Self-Evaluation PDF
+              </button>
+            ) : app.documents.selfEvaluationForm ? (
+              <a href={app.documents.selfEvaluationForm.url} target="_blank" rel="noopener noreferrer" className="btn-secondary btn-sm">
+                <FileText className="w-3.5 h-3.5" /> Self-Evaluation
+              </a>
+            ) : null}
           </div>
         </div>
       </div>
 
+      {!isApplicant && (
+      <>
       {/* Eligibility */}
       <div className="card p-5 mb-6">
         <h2 className="text-sm font-semibold text-text mb-3">Eligibility</h2>
@@ -155,6 +190,8 @@ export default function ApplicationView() {
           ))}
         </div>
       </div>
+      </>
+      )}
 
       {isPromotion && (
         <div className="card p-5 mb-6">
@@ -172,12 +209,15 @@ export default function ApplicationView() {
                   </p>
                   <p className="text-text-secondary text-xs mt-0.5">
                     {pub.journalName} · {pub.year} · {pub.indexing}
+                    {pub.volume && ` · Vol. ${pub.volume}`}
+                    {pub.issue && `, Issue ${pub.issue}`}
+                    {pub.pageNumbers && `, pp. ${pub.pageNumbers}`}
                     {pub.recognized && (
                       <span className="ml-2 text-success">✓ Recognized</span>
                     )}
                   </p>
-                  {pub.apaReference && (
-                    <p className="text-text-dim text-xs mt-1 italic">{pub.apaReference}</p>
+                  {generateAPA(pub) && (
+                    <p className="text-text-dim text-xs mt-1 italic">{generateAPA(pub)}</p>
                   )}
                 </div>
               ))}

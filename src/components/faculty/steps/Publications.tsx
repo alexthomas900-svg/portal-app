@@ -21,11 +21,12 @@ export default function PublicationsStep({ data, onChange }: Props) {
         year: new Date().getFullYear(),
         volume: '',
         issue: '',
+        pageNumbers: '',
         articleTitle: '',
         numberOfAuthors: 1,
         authorNames: [''],
         indexing: 'HEC',
-        recognized: true,
+        recognized: false,
         quartile: 'Unranked',
         apaReference: '',
       },
@@ -37,10 +38,7 @@ export default function PublicationsStep({ data, onChange }: Props) {
       if (i !== index) return p
       const next = { ...p, [field]: value }
 
-      // Auto-recognize based on indexing
-      if (field === 'indexing') {
-        next.recognized = value !== 'Other'
-      }
+      if (field === 'indexing') next.recognized = next.verification?.status === 'verified'
 
       // Update author names array when count changes
       if (field === 'numberOfAuthors') {
@@ -73,14 +71,14 @@ export default function PublicationsStep({ data, onChange }: Props) {
     onChange(data.filter((_, i) => i !== index))
   }
 
-  const recognizedCount = data.filter((p) => p.recognized).length
+  const recognizedCount = data.filter((p) => p.verification?.status === 'verified').length
 
   return (
     <div className="space-y-6">
       <div>
         <h3 className="text-lg font-semibold text-text mb-1">Publications</h3>
         <p className="text-sm text-text-secondary">
-          Add all journal publications. Recognized publications:{' '}
+          Add all journal publications. Verified publications:{' '}
           <span className="font-semibold text-primary">{recognizedCount}</span>
         </p>
       </div>
@@ -100,10 +98,10 @@ export default function PublicationsStep({ data, onChange }: Props) {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <h4 className="text-sm font-medium text-text">Publication {index + 1}</h4>
-              {pub.recognized ? (
-                <span className="badge-success">Recognized</span>
+              {pub.verification?.status === 'verified' ? (
+                <span className="badge-success">Verified</span>
               ) : (
-                <span className="badge-danger">Unrecognized</span>
+                <span className="badge-warning">Pending verification</span>
               )}
             </div>
             <button
@@ -168,6 +166,16 @@ export default function PublicationsStep({ data, onChange }: Props) {
             </div>
 
             <div>
+              <label className="block text-sm font-medium text-text mb-1.5">Page Numbers</label>
+              <input
+                type="text"
+                value={pub.pageNumbers ?? ''}
+                onChange={(e) => updateItem(index, 'pageNumbers', e.target.value)}
+                placeholder="e.g., 123–135"
+              />
+            </div>
+
+            <div>
               <label className="block text-sm font-medium text-text mb-1.5">Indexing</label>
               <select
                 value={pub.indexing}
@@ -221,6 +229,7 @@ export default function PublicationsStep({ data, onChange }: Props) {
           {/* Author names */}
           <div>
             <label className="block text-sm font-medium text-text mb-2">Author Names</label>
+            <p className="text-xs text-text-dim mb-2">Enter full first and last names; do not use initials.</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {pub.authorNames.map((name, ai) => (
                 <input
@@ -228,17 +237,17 @@ export default function PublicationsStep({ data, onChange }: Props) {
                   type="text"
                   value={name}
                   onChange={(e) => updateAuthorName(index, ai, e.target.value)}
-                  placeholder={`Author ${ai + 1}`}
+                  placeholder={`Author ${ai + 1} — full name`}
                 />
               ))}
             </div>
           </div>
 
           {/* APA Reference */}
-          {pub.apaReference && (
+          {generateAPA(pub) && (
             <div className="p-3 bg-primary-50 rounded-lg border border-primary-100">
               <p className="text-xs font-medium text-primary mb-1">APA 7 Reference</p>
-              <p className="text-sm text-text italic">{pub.apaReference}</p>
+              <p className="text-sm text-text italic">{generateAPA(pub)}</p>
             </div>
           )}
         </div>

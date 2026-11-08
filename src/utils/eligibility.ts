@@ -16,16 +16,24 @@ export function checkEligibility(app: Application): EligibilityResult {
   let postPhdMonths = 0
 
   const phdYear = app.qualifications.find((q) => q.degree === 'PhD')?.year || 0
+  const phdDate = phdYear ? new Date(Date.UTC(phdYear, 0, 1)) : null
+  const monthsBetween = (start: Date, end: Date) =>
+    (end.getUTCFullYear() - start.getUTCFullYear()) * 12 +
+    (end.getUTCMonth() - start.getUTCMonth())
 
   for (const exp of app.experience) {
-    if (!exp.from) continue
+    const institutionType = exp.institutionType ?? (exp.type === 'industry' ? 'other' : 'higher_education')
+    if (!exp.from || institutionType !== 'higher_education') continue
     const from = new Date(exp.from)
     const to = exp.isCurrent ? now : exp.to ? new Date(exp.to) : now
-    const months = (to.getFullYear() - from.getFullYear()) * 12 + (to.getMonth() - from.getMonth())
+    const months = monthsBetween(from, to)
     if (months > 0) {
       totalExperienceMonths += months
-      if (phdYear && from.getFullYear() >= phdYear) {
-        postPhdMonths += months
+      if (phdDate) {
+        const postPhdStart = from > phdDate ? from : phdDate
+        if (to > postPhdStart) {
+          postPhdMonths += monthsBetween(postPhdStart, to)
+        }
       }
     }
   }
@@ -79,7 +87,7 @@ export function checkEligibility(app: Application): EligibilityResult {
   const isAssociate = app.promotionType === 'associate_professor'
 
   const requiredTotalExp = isAssociate ? 10 : 15
-  const requiredPostPhd = isAssociate ? 5 : 10
+  const requiredPostPhd = isAssociate ? 5 : 8
   const requiredPublications = isAssociate ? 10 : 15
 
   const experienceMet =
@@ -87,7 +95,7 @@ export function checkEligibility(app: Application): EligibilityResult {
 
   if (!experienceMet) {
     reasons.push(
-      `Experience requirement not met: need ${requiredTotalExp} years total OR ${requiredPostPhd} years post-PhD (have ${totalExperienceYears} total, ${postPhdYears} post-PhD)`,
+      `Experience requirement not met: need ${requiredTotalExp} years in higher education OR ${requiredPostPhd} years in higher education post-PhD (have ${totalExperienceYears} total, ${postPhdYears} post-PhD)`,
     )
   }
 

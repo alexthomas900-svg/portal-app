@@ -5,6 +5,7 @@ import { requireAuth } from '../middleware/auth.js'
 import { FieldValue } from 'firebase-admin/firestore'
 import { verifyPublication } from '../services/publicationVerification.js'
 import { evaluateApplication } from '../services/rubricScoring.js'
+import { createNotification, recordAudit } from '../services/activityLog.js'
 
 const router = Router()
 
@@ -38,8 +39,43 @@ function toMillis(value: unknown): number {
   return 0
 }
 
+function serializeTimestamps(value: unknown): unknown {
+  if (value instanceof Date) return value.toISOString()
+  if (Array.isArray(value)) return value.map(serializeTimestamps)
+  if (!value || typeof value !== 'object') return value
+
+  const timestamp = value as { toDate?: () => Date; seconds?: number; _seconds?: number }
+  if (typeof timestamp.toDate === 'function') return timestamp.toDate().toISOString()
+  const seconds = timestamp.seconds ?? timestamp._seconds
+  if (typeof seconds === 'number' && Object.keys(value).some((key) => key === 'nanoseconds' || key === '_nanoseconds')) {
+    const nanoseconds = (value as { nanoseconds?: number; _nanoseconds?: number }).nanoseconds ??
+      (value as { _nanoseconds?: number })._nanoseconds ?? 0
+    return new Date(seconds * 1000 + nanoseconds / 1_000_000).toISOString()
+  }
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>).map(([key, item]) => [key, serializeTimestamps(item)]),
+  )
+}
+
 function sortByCreatedAtDesc<T extends { createdAt?: unknown }>(items: T[]): T[] {
   return [...items].sort((left, right) => toMillis(right.createdAt) - toMillis(left.createdAt))
+}
+
+function externalCvOnly(application: Record<string, unknown>) {
+  const documents = application.documents as Record<string, unknown> | undefined
+  return {
+    id: application.id,
+    applicantName: '',
+    applicantEmail: '',
+    applicationType: application.applicationType,
+    promotionType: application.promotionType,
+    personalInfo: {
+      fullName: '',
+      department: '',
+      currentDesignation: '',
+    },
+    documents: { updatedCV: documents?.updatedCV },
+  }
 }
 
 // Helper: get caller role
@@ -48,19 +84,36 @@ async function getCallerRole(uid: string): Promise<string | null> {
   return snap.exists ? (snap.data()?.role as string) : null
 }
 
+async function isReviewerAssigned(applicationId: string, uid: string, role: string | null): Promise<boolean> {
+  const snapshot = await db.collection('applications').doc(applicationId).get()
+  if (!snapshot.exists) return false
+  const application = snapshot.data()!
+  const assignments = application.assignments as Record<string, unknown> | undefined
+  const isAssigned = role === 'internal_reviewer'
+    ? assignments?.internalReviewer1Uid === uid || assignments?.internalReviewer2Uid === uid
+    : role === 'external_reviewer' &&
+      application.applicationType === 'promotion' &&
+      application.promotionType === 'full_professor' &&
+      assignments?.externalReviewerUid === uid
+  if (!isAssigned) return false
+  const conflict = await db.collection('applications').doc(applicationId).collection('conflicts').doc(uid).get()
+  return !conflict.exists || conflict.data()?.resolved === true
+}
+
 // Helper: build empty application template
 function buildEmptyApplication(
   uid: string,
   name: string,
   email: string,
   applicationType: string,
+  promotionType = 'associate_professor',
 ) {
   return {
     applicantUid: uid,
     applicantName: name,
     applicantEmail: email,
     applicationType,
-    promotionType: 'associate_professor',
+    promotionType,
     status: 'draft',
     personalInfo: {
       fullName: name,
@@ -73,7 +126,7 @@ function buildEmptyApplication(
       dateOfBirth: '',
       dateOfJoining: '',
       applicationType,
-      promotionType: 'associate_professor',
+      promotionType,
     },
     qualifications: [],
     experience: [],
@@ -136,8 +189,46 @@ function buildEmptyApplication(
 // POST /api/applications — create new application
 router.post('/', requireAuth, async (req: AuthRequest, res) => {
   try {
-    const { applicationType } = req.body as { applicationType?: string }
+    const { applicationType, promotionType, cycleId } = req.body as {
+      applicationType?: string
+      promotionType?: string
+      cycleId?: string
+    }
     const type = applicationType || 'promotion'
+    const promotion = promotionType === 'full_professor' ? 'full_professor' : 'associate_professor'
+
+    if (!['promotion', 'contract_renewal', 'self_evaluation'].includes(type)) {
+      res.status(400).json({ error: 'Invalid application type' })
+      return
+    }
+    if ((await getCallerRole(req.uid!)) !== 'faculty') {
+      res.status(403).json({ error: 'Faculty applicant access required' })
+      return
+    }
+
+    if (!cycleId) {
+      res.status(400).json({ error: 'An active application cycle is required' })
+      return
+    }
+    const cycle = await db.collection('applicationCycles').doc(cycleId).get()
+    const cycleData = cycle.data()
+    if (!cycle.exists || !cycleData?.isOpen || cycleData.applicationType !== type ||
+      (type === 'promotion' && cycleData.promotionType !== promotion) ||
+      Date.now() < Date.parse(String(cycleData.opensAt)) ||
+      Date.now() > Date.parse(String(cycleData.closesAt))) {
+      res.status(400).json({ error: 'This application cycle is not currently open' })
+      return
+    }
+    const applicantApplications = await db.collection('applications').where('applicantUid', '==', req.uid!).get()
+    const alreadyStarted = applicantApplications.docs.some((document) => {
+      const current = document.data()
+      return current.cycleId === cycleId && current.applicationType === type &&
+        (type !== 'promotion' || current.promotionType === promotion)
+    })
+    if (alreadyStarted) {
+      res.status(409).json({ error: 'An application for this cycle already exists' })
+      return
+    }
 
     // Get user profile for name/email
     const profileSnap = await db.collection('users').doc(req.uid!).get()
@@ -150,10 +241,47 @@ router.post('/', requireAuth, async (req: AuthRequest, res) => {
     const ref = db.collection('applications').doc()
     const app = {
       id: ref.id,
-      ...buildEmptyApplication(req.uid!, profile.displayName, profile.email, type),
+      ...buildEmptyApplication(req.uid!, profile.displayName, profile.email, type, promotion),
+      cycleId,
+      academicYear: cycleData.academicYear,
+      ...(type === 'self_evaluation'
+        ? {
+            annualEvaluation: {
+              evaluationYear: String(new Date().getFullYear()),
+              employmentDetails: '',
+              coursesTaught: '',
+              teachingStrategies: '',
+              assessmentMethods: '',
+              teachingInnovations: '',
+              teachingAchievements: '',
+              teachingReflection: '',
+              researchActivities: '',
+              researchProjects: '',
+              conferencePresentations: '',
+              researchCollaborations: '',
+              researchAchievements: '',
+              professionalDevelopment: '',
+              cpdHours: 0,
+              booksAndChapters: '',
+              academicContributions: '',
+              departmentalResponsibilities: '',
+              universityCommittees: '',
+              studentAdvisingAndActivities: '',
+              leadershipAndCommunityService: '',
+              institutionalEngagement: '',
+              majorAchievements: '',
+              challenges: '',
+              areasForImprovement: '',
+              futureGoals: '',
+              supportRequired: '',
+              supportingDocuments: [],
+            },
+          }
+        : {}),
     }
     await ref.set(app)
-    res.json(app)
+    await recordAudit(req.uid!, 'application_created', ref.id, { applicationType: type, promotionType: promotion })
+    res.json(serializeTimestamps((await ref.get()).data()))
   } catch (err) {
     console.error('POST /api/applications error:', err)
     res.status(500).json({ error: 'Failed to create application' })
@@ -163,8 +291,12 @@ router.post('/', requireAuth, async (req: AuthRequest, res) => {
 // GET /api/applications/mine — get current user's applications
 router.get('/mine', requireAuth, async (req: AuthRequest, res) => {
   try {
+    if ((await getCallerRole(req.uid!)) !== 'faculty') {
+      res.status(403).json({ error: 'Faculty applicant access required' })
+      return
+    }
     const snap = await db.collection('applications').where('applicantUid', '==', req.uid!).get()
-    res.json(sortByCreatedAtDesc(snap.docs.map((d) => d.data())))
+    res.json(serializeTimestamps(sortByCreatedAtDesc(snap.docs.map((d) => stripApplicantOnlyFields(d.data() as Record<string, unknown>)))))
   } catch (err) {
     console.error('GET /api/applications/mine error:', err)
     res.status(500).json({ error: 'Failed to fetch applications' })
@@ -184,7 +316,16 @@ router.get('/submitted', requireAuth, async (req: AuthRequest, res) => {
       .collection('applications')
       .where('status', 'in', ['submitted', 'under_review', 'reviewed', 'decision_made'])
       .get()
-    res.json(sortByCreatedAtDesc(snap.docs.map((d) => d.data())))
+    const applications = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+    const visible = role === 'admin'
+      ? applications
+      : (await Promise.all(snap.docs.map(async (doc) =>
+          await isReviewerAssigned(doc.id, req.uid!, role) ? doc.data() : null,
+        ))).filter((application): application is FirebaseFirestore.DocumentData => application !== null)
+    const sorted = sortByCreatedAtDesc(visible)
+    res.json(serializeTimestamps(role === 'external_reviewer'
+      ? sorted.map(externalCvOnly)
+      : sorted))
   } catch (err) {
     console.error('GET /api/applications/submitted error:', err)
     res.status(500).json({ error: 'Failed to fetch submitted applications' })
@@ -201,7 +342,7 @@ router.get('/all', requireAuth, async (req: AuthRequest, res) => {
     }
 
     const snap = await db.collection('applications').get()
-    res.json(sortByCreatedAtDesc(snap.docs.map((d) => d.data())))
+    res.json(serializeTimestamps(sortByCreatedAtDesc(snap.docs.map((d) => d.data()))))
   } catch (err) {
     console.error('GET /api/applications/all error:', err)
     res.status(500).json({ error: 'Failed to fetch all applications' })
@@ -220,8 +361,10 @@ router.get('/:id', requireAuth, async (req: AuthRequest, res) => {
 
     // Access control: owner, reviewer, or admin
     const role = await getCallerRole(req.uid!)
-    const isOwner = data.applicantUid === req.uid
-    const isReviewer = role === 'internal_reviewer' || role === 'external_reviewer'
+    const isOwner = data.applicantUid === req.uid && role === 'faculty'
+    const isAssignedReviewer = ['internal_reviewer', 'external_reviewer'].includes(String(role)) &&
+      await isReviewerAssigned(req.params.id, req.uid!, role)
+    const isReviewer = isAssignedReviewer
     const isAdmin = role === 'admin'
 
     if (!isOwner && !isReviewer && !isAdmin) {
@@ -235,11 +378,17 @@ router.get('/:id', requireAuth, async (req: AuthRequest, res) => {
       void evaluationReport
       // Also strip per-section rubricScores
       const sanitized = stripReviewerOnlyFields(applicantData)
-      res.json(sanitized)
+      res.json(serializeTimestamps(stripApplicantOnlyFields(sanitized)))
       return
     }
 
-    res.json(data)
+    if (role === 'external_reviewer' && isAssignedReviewer) {
+      await recordAudit(req.uid!, 'external_cv_accessed', req.params.id)
+      res.json(serializeTimestamps(externalCvOnly(data)))
+      return
+    }
+    if (role === 'internal_reviewer') await recordAudit(req.uid!, 'confidential_application_accessed', req.params.id)
+    res.json(serializeTimestamps(data))
   } catch (err) {
     console.error('GET /api/applications/:id error:', err)
     res.status(500).json({ error: 'Failed to fetch application' })
@@ -259,23 +408,106 @@ router.put('/:id', requireAuth, async (req: AuthRequest, res) => {
     const role = await getCallerRole(req.uid!)
     const isOwner = existing.applicantUid === req.uid
     const isAdmin = role === 'admin'
+    const isApplicant = isOwner && role === 'faculty'
 
-    if (!isOwner && !isAdmin) {
+    if (!isApplicant && !isAdmin) {
       res.status(403).json({ error: 'Access denied' })
       return
     }
 
     const body = req.body as Record<string, unknown>
+    if (isApplicant && existing.status !== 'draft') {
+      res.status(403).json({ error: 'Submitted applications are read-only' })
+      return
+    }
+    const safeBody = { ...body }
+    delete safeBody.evaluationReport
+    delete safeBody.assignments
+    delete safeBody.finalDecision
+    delete safeBody.snapshotId
+    delete safeBody.conflictDeclared
+    delete safeBody.conflictExplanation
+    delete safeBody.eligibilityResult
+    delete safeBody.teachingScore
+    delete safeBody.effortsScore
+    delete safeBody.scholarshipScore
+    delete safeBody.servicesScore
+    delete safeBody.totalScore
+    for (const section of ['teachingEffectiveness', 'effortsToImprove', 'scholarship', 'services']) {
+      const sectionData = safeBody[section]
+      if (sectionData && typeof sectionData === 'object') {
+        const incomingSection = sectionData as Record<string, unknown>
+        const existingSection = existing[section] as Record<string, unknown> | undefined
+        if (isApplicant) {
+          for (const field of ['overallRating', 'chairRating', 'deanRating', 'studentRating', 'rubricScores']) {
+            if (existingSection && field in existingSection) {
+              incomingSection[field] = existingSection[field]
+            } else {
+              delete incomingSection[field]
+            }
+          }
+          safeBody[section] = { ...existingSection, ...incomingSection }
+        } else {
+          delete incomingSection.rubricScores
+        }
+      }
+    }
+    if (isApplicant && Array.isArray(safeBody.publications)) {
+      const previousPublications = new Map(
+        ((existing.publications as Array<Record<string, unknown>> | undefined) ?? [])
+          .map((publication) => [String(publication.id), publication]),
+      )
+      safeBody.publications = (safeBody.publications as Array<Record<string, unknown>>).map((publication) => {
+        const previous = previousPublications.get(String(publication.id))
+        const unchanged = previous &&
+          previous.articleTitle === publication.articleTitle &&
+          previous.journalName === publication.journalName &&
+          previous.indexing === publication.indexing
+        const verification = unchanged ? previous.verification as Record<string, unknown> | undefined : undefined
+        const safePublication: Record<string, unknown> = {
+          ...publication,
+          recognized: verification?.status === 'verified',
+        }
+        if (verification) safePublication.verification = verification
+        else delete safePublication.verification
+        return safePublication
+      })
+    }
+    if (safeBody.personalInfo && typeof safeBody.personalInfo === 'object') {
+      const personalInfo = safeBody.personalInfo as Record<string, unknown>
+      safeBody.personalInfo = {
+        ...personalInfo,
+        applicationType: existing.applicationType,
+        promotionType: existing.promotionType,
+      }
+    }
     // Merge with server timestamp
     await db.collection('applications').doc(req.params.id).set(
       {
-        ...body,
+        ...safeBody,
         id: req.params.id,
-        applicationType: (body.personalInfo as Record<string, unknown>)?.applicationType || body.applicationType || existing.applicationType,
+        applicantUid: existing.applicantUid,
+        applicantName: existing.applicantName,
+        applicantEmail: existing.applicantEmail,
+        applicationType: existing.applicationType,
+        promotionType: existing.promotionType,
+        // Applications created outside a cycle (e.g. the seeded demo drafts)
+        // have neither field, and Firestore rejects `undefined` values.
+        cycleId: existing.cycleId ?? null,
+        academicYear: existing.academicYear ?? null,
+        createdAt: existing.createdAt,
+        status: existing.status,
+        // `submittedAt` is never initialized when an application is first
+        // created (see buildEmptyApplication), so it's `undefined` here for
+        // any draft that hasn't been submitted yet. Firestore rejects
+        // `undefined` values outright, which broke saving a brand-new
+        // draft's very first edit.
+        submittedAt: existing.submittedAt ?? null,
         updatedAt: FieldValue.serverTimestamp(),
       },
       { merge: false },
     )
+    await recordAudit(req.uid!, 'application_edited', req.params.id)
     res.json({ success: true })
   } catch (err) {
     console.error('PUT /api/applications/:id error:', err)
@@ -291,16 +523,89 @@ router.post('/:id/submit', requireAuth, async (req: AuthRequest, res) => {
       res.status(404).json({ error: 'Application not found' })
       return
     }
-    if (snap.data()!.applicantUid !== req.uid) {
+    if (snap.data()!.applicantUid !== req.uid || (await getCallerRole(req.uid!)) !== 'faculty') {
       res.status(403).json({ error: 'Access denied' })
       return
     }
-
-    await db.collection('applications').doc(req.params.id).update({
-      status: 'submitted',
-      submittedAt: FieldValue.serverTimestamp(),
-      updatedAt: FieldValue.serverTimestamp(),
+    if (snap.data()!.status !== 'draft') {
+      res.status(403).json({ error: 'Application has already been submitted' })
+      return
+    }
+    const applicationData = snap.data()!
+    if (applicationData.declaration !== true) {
+      res.status(400).json({ error: 'The application declaration must be confirmed before submission' })
+      return
+    }
+    if (applicationData.applicationType === 'self_evaluation') {
+      const annualEvaluation = applicationData.annualEvaluation as Record<string, unknown> | undefined
+      if (!annualEvaluation?.evaluationYear || !annualEvaluation.coursesTaught) {
+        res.status(400).json({ error: 'Evaluation year and courses taught are required for an annual self-evaluation' })
+        return
+      }
+    }
+    if (typeof applicationData.cycleId === 'string') {
+      const cycle = await db.collection('applicationCycles').doc(applicationData.cycleId).get()
+      const cycleData = cycle.data()
+      const now = Date.now()
+      if (!cycle.exists || !cycleData?.isOpen ||
+        now < Date.parse(String(cycleData.opensAt)) || now > Date.parse(String(cycleData.closesAt))) {
+        res.status(403).json({ error: 'The application cycle is closed' })
+        return
+      }
+      const requiredDocuments = Array.isArray(cycleData.requiredDocuments)
+        ? cycleData.requiredDocuments as string[]
+        : []
+      const missing = requiredDocuments.filter((key) => {
+        if (key === 'annualEvalDocs') {
+          return !((applicationData.annualEvaluation as Record<string, unknown> | undefined)?.supportingDocuments as unknown[] | undefined)?.length
+        }
+        const document = (applicationData.documents as Record<string, unknown> | undefined)?.[key]
+        const minimumCount = ['courseOutlines', 'assignments', 'teachingSupportDocs'].includes(key) ? 2 : 1
+        return Array.isArray(document) ? document.length < minimumCount : !document
+      })
+      if (missing.length) {
+        res.status(400).json({ error: `Complete the required documents: ${missing.join(', ')}` })
+        return
+      }
+    }
+    if (applicationData.applicationType === 'promotion') {
+      const teaching = applicationData.teachingEffectiveness as Record<string, unknown> | undefined
+      const documents = applicationData.documents as Record<string, unknown> | undefined
+      const sloDocuments = teaching?.sloDocuments as unknown[] | undefined
+      const courseOutlines = documents?.courseOutlines as unknown[] | undefined
+      if (!sloDocuments?.length || (courseOutlines?.length ?? 0) < 2) {
+        res.status(400).json({ error: 'Upload a sample SLO document and at least two course outlines before submitting' })
+        return
+      }
+    }
+    const submittedAt = new Date().toISOString()
+    const applicationRef = db.collection('applications').doc(req.params.id)
+    const snapshotRef = applicationRef.collection('snapshots').doc()
+    await db.runTransaction(async (transaction) => {
+      const current = await transaction.get(applicationRef)
+      if (!current.exists || current.data()?.status !== 'draft' || current.data()?.applicantUid !== req.uid) {
+        throw new Error('Application is no longer an editable draft')
+      }
+      const frozenApplication = {
+        ...current.data(),
+        status: 'submitted',
+        submittedAt,
+        snapshotId: snapshotRef.id,
+      }
+      transaction.set(snapshotRef, {
+        ...frozenApplication,
+        snapshotId: snapshotRef.id,
+        submittedAt,
+      })
+      transaction.update(applicationRef, {
+        status: 'submitted',
+        submittedAt,
+        snapshotId: snapshotRef.id,
+        updatedAt: FieldValue.serverTimestamp(),
+      })
     })
+    await recordAudit(req.uid!, 'application_submitted', req.params.id, { snapshotId: snapshotRef.id })
+    await createNotification(req.uid!, 'submission_confirmation', 'Your application was submitted successfully.', req.params.id)
     res.json({ success: true })
   } catch (err) {
     console.error('POST /api/applications/:id/submit error:', err)
@@ -318,10 +623,15 @@ router.put('/:id/status', requireAuth, async (req: AuthRequest, res) => {
     }
 
     const { status } = req.body as { status: string }
+    if (!['draft', 'submitted', 'under_review', 'reviewed', 'decision_made'].includes(status)) {
+      res.status(400).json({ error: 'Invalid application status' })
+      return
+    }
     await db.collection('applications').doc(req.params.id).update({
       status,
       updatedAt: FieldValue.serverTimestamp(),
     })
+    await recordAudit(req.uid!, 'application_status_changed', req.params.id, { status })
     res.json({ success: true })
   } catch (err) {
     console.error('PUT /api/applications/:id/status error:', err)
@@ -339,6 +649,7 @@ router.delete('/:id', requireAuth, async (req: AuthRequest, res) => {
     }
 
     await db.collection('applications').doc(req.params.id).delete()
+    await recordAudit(req.uid!, 'application_deleted', req.params.id)
     res.json({ success: true })
   } catch (err) {
     console.error('DELETE /api/applications/:id error:', err)
@@ -358,8 +669,8 @@ router.post('/:id/publications/:pubId/verify', requireAuth, async (req: AuthRequ
     const data = snap.data()!
 
     // Applicant can trigger on own draft; reviewers and admins always allowed
-    const isOwner = data.applicantUid === req.uid
-    const isReviewer = role === 'internal_reviewer' || role === 'external_reviewer'
+    const isOwner = data.applicantUid === req.uid && role === 'faculty' && data.status === 'draft'
+    const isReviewer = await isReviewerAssigned(req.params.id, req.uid!, role)
     const isAdmin = role === 'admin'
     if (!isOwner && !isReviewer && !isAdmin) {
       res.status(403).json({ error: 'Access denied' })
@@ -378,16 +689,18 @@ router.post('/:id/publications/:pubId/verify', requireAuth, async (req: AuthRequ
 
     const pub = publications[pubIndex]!
     const verification = await verifyPublication(
+      String(pub.articleTitle ?? ''),
       String(pub.journalName ?? ''),
       String(pub.indexing ?? ''),
     )
 
-    publications[pubIndex] = { ...pub, verification }
+    publications[pubIndex] = { ...pub, verification, recognized: verification.status === 'verified' }
     await db.collection('applications').doc(req.params.id).update({
       publications,
       updatedAt: FieldValue.serverTimestamp(),
     })
 
+    await recordAudit(req.uid!, 'publication_verified', req.params.id, { publicationId: req.params.pubId })
     console.info(`Publication ${req.params.pubId} verified by ${req.uid} at ${new Date().toISOString()}`)
     res.json({ verification })
   } catch (err) {
@@ -402,6 +715,10 @@ router.post('/:id/evaluate', requireAuth, async (req: AuthRequest, res) => {
     const role = await getCallerRole(req.uid!)
     if (!role || !['internal_reviewer', 'admin'].includes(role)) {
       res.status(403).json({ error: 'Reviewer or admin access required' })
+      return
+    }
+    if (role === 'internal_reviewer' && !(await isReviewerAssigned(req.params.id, req.uid!, role))) {
+      res.status(403).json({ error: 'Application assignment required' })
       return
     }
 
@@ -419,6 +736,7 @@ router.post('/:id/evaluate', requireAuth, async (req: AuthRequest, res) => {
       updatedAt: FieldValue.serverTimestamp(),
     })
 
+    await recordAudit(req.uid!, 'automated_evaluation_completed', req.params.id)
     console.info(`Evaluation run for application ${req.params.id} by ${req.uid} at ${report.generatedAt}`)
     res.json(report)
   } catch (err) {
@@ -431,8 +749,12 @@ router.post('/:id/evaluate', requireAuth, async (req: AuthRequest, res) => {
 router.get('/:id/reviewer-report', requireAuth, async (req: AuthRequest, res) => {
   try {
     const role = await getCallerRole(req.uid!)
-    if (!role || !['internal_reviewer', 'external_reviewer', 'admin'].includes(role)) {
+    if (!role || !['internal_reviewer', 'admin'].includes(role)) {
       res.status(403).json({ error: 'Reviewer or admin access required' })
+      return
+    }
+    if (role === 'internal_reviewer' && !(await isReviewerAssigned(req.params.id, req.uid!, role))) {
+      res.status(403).json({ error: 'Application assignment required' })
       return
     }
 
@@ -454,8 +776,12 @@ router.get('/:id/reviewer-report', requireAuth, async (req: AuthRequest, res) =>
 router.post('/:id/reviewer-comments', requireAuth, async (req: AuthRequest, res) => {
   try {
     const role = await getCallerRole(req.uid!)
-    if (!role || !['internal_reviewer', 'external_reviewer', 'admin'].includes(role)) {
+    if (!role || !['internal_reviewer', 'admin'].includes(role)) {
       res.status(403).json({ error: 'Reviewer or admin access required' })
+      return
+    }
+    if (role === 'internal_reviewer' && !(await isReviewerAssigned(req.params.id, req.uid!, role))) {
+      res.status(403).json({ error: 'Application assignment required' })
       return
     }
 
@@ -469,7 +795,7 @@ router.post('/:id/reviewer-comments', requireAuth, async (req: AuthRequest, res)
     const profile = profileSnap.data() ?? {}
 
     const { criterion, comment } = req.body as { criterion?: string; comment?: string }
-    if (!criterion || !comment?.trim()) {
+    if (!criterion || !comment?.trim() || comment.length > 5000) {
       res.status(400).json({ error: 'criterion and comment are required' })
       return
     }
@@ -492,6 +818,7 @@ router.post('/:id/reviewer-comments', requireAuth, async (req: AuthRequest, res)
     }
 
     await ref.set(entry)
+    await recordAudit(req.uid!, 'reviewer_comment_added', req.params.id, { criterion })
     res.json(entry)
   } catch (err) {
     console.error('POST /api/applications/:id/reviewer-comments error:', err)
@@ -503,10 +830,15 @@ router.post('/:id/reviewer-comments', requireAuth, async (req: AuthRequest, res)
 router.get('/:id/reviewer-comments', requireAuth, async (req: AuthRequest, res) => {
   try {
     const role = await getCallerRole(req.uid!)
-    if (!role || !['internal_reviewer', 'external_reviewer', 'admin'].includes(role)) {
+    if (!role || !['internal_reviewer', 'admin'].includes(role)) {
       res.status(403).json({ error: 'Reviewer or admin access required' })
       return
     }
+    if (role === 'internal_reviewer' && !(await isReviewerAssigned(req.params.id, req.uid!, role))) {
+      res.status(403).json({ error: 'Application assignment required' })
+      return
+    }
+    await recordAudit(req.uid!, 'reviewer_comments_accessed', req.params.id)
 
     const snap = await db
       .collection('applications')
@@ -588,17 +920,43 @@ function stripReviewerOnlyFields(data: Record<string, unknown>): Record<string, 
 
   // Remove top-level evaluation report
   delete result.evaluationReport
+  delete result.eligibilityResult
+  delete result.teachingScore
+  delete result.effortsScore
+  delete result.scholarshipScore
+  delete result.servicesScore
+  delete result.totalScore
 
   // Remove rubricScores nested in each section
   for (const section of ['teachingEffectiveness', 'effortsToImprove', 'scholarship', 'services'] as const) {
     const sectionData = result[section]
     if (sectionData && typeof sectionData === 'object') {
-      const { rubricScores, ...rest } = sectionData as Record<string, unknown> & { rubricScores?: unknown }
+      const {
+        rubricScores,
+        overallRating,
+        chairRating,
+        deanRating,
+        studentRating,
+        ...rest
+      } = sectionData as Record<string, unknown>
       void rubricScores
+      void overallRating
+      void chairRating
+      void deanRating
+      void studentRating
       result[section] = rest
     }
   }
 
+  return result
+}
+
+function stripApplicantOnlyFields(data: Record<string, unknown>): Record<string, unknown> {
+  const result = stripReviewerOnlyFields(data)
+  delete result.assignments
+  delete result.snapshotId
+  delete result.conflictDeclared
+  delete result.conflictExplanation
   return result
 }
 

@@ -16,12 +16,18 @@ import {
   type Application,
   type ApplicationStatus,
 } from '../../types'
+import WorkflowManagement from './WorkflowManagement'
+import { downloadCsv, printPdfReport } from '../../utils/reports'
 
 export default function AdminDashboard() {
   const [applications, setApplications] = useState<Application[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [filter, setFilter] = useState<ApplicationStatus | 'all'>('all')
+  const [typeFilter, setTypeFilter] = useState<Application['applicationType'] | 'all'>('all')
+  const [departmentFilter, setDepartmentFilter] = useState('all')
+  const [yearFilter, setYearFilter] = useState('all')
+  const [decisionFilter, setDecisionFilter] = useState('all')
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -52,8 +58,15 @@ export default function AdminDashboard() {
     await loadApplications()
   }
 
-  const filtered =
-    filter === 'all' ? applications : applications.filter((a) => a.status === filter)
+  const filtered = applications.filter((application) =>
+    (filter === 'all' || application.status === filter) &&
+    (typeFilter === 'all' || application.applicationType === typeFilter) &&
+    (departmentFilter === 'all' || application.personalInfo.department === departmentFilter) &&
+    (yearFilter === 'all' || (application.academicYear ?? application.annualEvaluation?.evaluationYear) === yearFilter) &&
+    (decisionFilter === 'all' || (application.finalDecision ?? '') === decisionFilter),
+  )
+  const departments = [...new Set(applications.map((application) => application.personalInfo.department).filter(Boolean))]
+  const years = [...new Set(applications.map((application) => application.academicYear ?? application.annualEvaluation?.evaluationYear).filter((year): year is string => Boolean(year)))]
 
   const stats = {
     total: applications.length,
@@ -131,6 +144,49 @@ export default function AdminDashboard() {
           </div>
         </div>
 
+        <WorkflowManagement applications={applications} />
+
+        <div className="flex flex-wrap gap-2 mb-6">
+          <button
+            onClick={() => downloadCsv('faculty-portal-report.csv', [
+              ['Reference', 'Applicant', 'Email', 'Application Type', 'Promotion Type', 'Department', 'Designation', 'Status', 'Academic Year', 'Final Decision', 'Internal Reviewer 1', 'Internal Reviewer 2', 'External Reviewer'],
+              ...filtered.map((app) => [
+                app.id,
+                app.applicantName,
+                app.applicantEmail,
+                app.applicationType,
+                app.applicationType === 'promotion' ? app.promotionType : '',
+                app.personalInfo.department,
+                app.personalInfo.currentDesignation,
+                app.status,
+                app.academicYear ?? app.annualEvaluation?.evaluationYear ?? '',
+                app.finalDecision ?? '',
+                app.assignments?.internalReviewer1Uid ?? '',
+                app.assignments?.internalReviewer2Uid ?? '',
+                app.assignments?.externalReviewerUid ?? '',
+              ]),
+            ])}
+            className="btn-secondary btn-sm"
+          >
+            Export Excel-compatible CSV
+          </button>
+          <button
+            onClick={() => printPdfReport('Institutional Application Report', filtered.map((app) => ({
+              label: `${app.applicantName} · ${app.id}`,
+              value: [
+                `${app.applicationType}${app.applicationType === 'promotion' ? ` (${formatPromotionLabel(app.promotionType)})` : ''}`,
+                `Department: ${app.personalInfo.department || '—'}`,
+                `Designation: ${app.personalInfo.currentDesignation || '—'}`,
+                `Status: ${app.status}`,
+                `Final decision: ${app.finalDecision ?? 'Pending'}`,
+              ].join('\n'),
+            })))}
+            className="btn-secondary btn-sm"
+          >
+            Print / Save report as PDF
+          </button>
+        </div>
+
         <div className="card p-4 flex items-center gap-3">
           <div className="w-10 h-10 rounded-lg bg-warning-light flex items-center justify-center">
             <BarChart3 className="w-5 h-5 text-warning" />
@@ -158,6 +214,24 @@ export default function AdminDashboard() {
             {f === 'all' ? 'All' : f.replace('_', ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
           </button>
         ))}
+        <select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value as typeof typeFilter)} className="text-xs px-2 py-1.5 rounded border border-border bg-surface">
+          <option value="all">All types</option>
+          <option value="self_evaluation">Annual evaluation</option>
+          <option value="promotion">Promotion</option>
+          <option value="contract_renewal">Contract renewal</option>
+        </select>
+        <select value={departmentFilter} onChange={(event) => setDepartmentFilter(event.target.value)} className="text-xs px-2 py-1.5 rounded border border-border bg-surface">
+          <option value="all">All departments</option>
+          {departments.map((department) => <option key={department} value={department}>{department}</option>)}
+        </select>
+        <select value={yearFilter} onChange={(event) => setYearFilter(event.target.value)} className="text-xs px-2 py-1.5 rounded border border-border bg-surface">
+          <option value="all">All academic years</option>
+          {years.map((year) => <option key={year} value={year}>{year}</option>)}
+        </select>
+        <select value={decisionFilter} onChange={(event) => setDecisionFilter(event.target.value)} className="text-xs px-2 py-1.5 rounded border border-border bg-surface">
+          <option value="all">All decisions</option>
+          {['approved', 'not_approved', 'deferred', 'returned_for_information'].map((decision) => <option key={decision} value={decision}>{decision.replace(/_/g, ' ')}</option>)}
+        </select>
       </div>
 
       {/* Applications table */}

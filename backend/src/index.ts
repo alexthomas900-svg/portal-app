@@ -1,9 +1,11 @@
 import express from 'express'
 import cors from 'cors'
+import { rateLimit } from 'express-rate-limit'
 import './firebase-admin.js' // Initialize Firebase Admin on startup
 import authRoutes from './routes/auth.js'
 import applicationRoutes from './routes/applications.js'
 import reviewRoutes from './routes/reviews.js'
+import workflowRoutes from './routes/workflows.js'
 
 const app = express()
 const PORT = parseInt(process.env.PORT || '5000', 10)
@@ -51,11 +53,18 @@ app.use(
 )
 
 app.use(express.json({ limit: '10mb' }))
+app.use('/api', rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 1000,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+}))
 
 // ── Routes ──
 app.use('/api/auth', authRoutes)
 app.use('/api/applications', applicationRoutes)
 app.use('/api/reviews', reviewRoutes)
+app.use('/api/workflows', workflowRoutes)
 
 app.get('/', (_req, res) => {
   res.json({

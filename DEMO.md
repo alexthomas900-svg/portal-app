@@ -5,6 +5,68 @@ Backend API: **https://portal-app-0wv4.onrender.com**
 
 ---
 
+## Local emulator demo (no live Firebase project needed)
+
+Run the whole stack locally against the Firebase Local Emulator Suite —
+fully isolated, no real credentials, and won't touch the live demo data.
+Requires a JDK (17+) for the Firestore/Storage emulators; everything else
+is installed via `npm install`.
+
+Open three terminals from the repo root:
+
+```powershell
+# Terminal 1 — Firebase Emulator Suite (Auth, Firestore, Storage, UI at :4000)
+npm run demo:emulators
+
+# Terminal 2 — backend API, wired to the emulators, on :5000
+npm run demo:backend
+
+# Terminal 3 — frontend dev server, wired to the emulators + local backend, on :5173
+npm run demo:frontend
+```
+
+Then, once (with the emulators running), seed the demo accounts with their
+correct roles — the normal sign-up flow only ever creates `faculty`
+accounts, so this is required the first time per emulator session — and
+seed a realistic sample dataset (several additional faculty applicants,
+open application cycles, reviewer assignments, submitted reviews, and a
+committee decision), the same way the live server looks for a demo:
+
+```powershell
+npm run demo:seed-users
+npm run demo:seed-data
+```
+
+Open **http://localhost:5173**, click any demo tile, and sign in. Demo
+applications are auto-seeded for the Faculty account on first login (dev
+mode). Emulator data is in-memory only and resets each time the emulator
+process restarts — re-run both seed commands after a restart (both are
+idempotent and safe to re-run any time).
+
+`demo:seed-data` creates two accounts beyond the four sign-in tiles so the
+full review/committee workflow has data to show — sign in to them manually
+with the email/password fields (password `Demo@12345` for every account):
+
+| Role | Email | Scenario it plays |
+|---|---|---|
+| Internal Reviewer #2 | `demo.internal2@fccollege.edu.pk` | Second reviewer required for assignments |
+| Committee Member | `demo.committee@fccollege.edu.pk` | Committee Portal decisions |
+
+It also creates four fake faculty applicants, each showcasing a different
+point in the application lifecycle:
+
+| Applicant | Application | Status |
+|---|---|---|
+| Dr. Ayesha Siddiqui | Associate Professor promotion | `decision_made` (approved) — full lifecycle incl. committee decision |
+| Dr. Bilal Ahmed | Full Professor promotion | `reviewed` — awaiting a committee decision (both internal + external reviews in) |
+| Dr. Sara Malik | Contract renewal | `under_review` — one of two internal reviews still pending |
+| Dr. Omer Farooq | Annual self-evaluation | `submitted` |
+
+> If you see a "Firestore profile not found" banner right after the very
+> first sign-in, just reload the page — it's a one-time race on cold start.
+
+---
+
 ## Demo Accounts
 
 All accounts are auto-created on first use. Just click the account tile on the sign-in screen and hit **Sign In** — no manual registration needed.

@@ -32,9 +32,14 @@ const externalReviewerLinks = [
   { to: '/external-review', icon: ClipboardCheck, label: 'Evaluations' },
 ]
 
+const committeeLinks = [
+  { to: '/committee', icon: ClipboardCheck, label: 'Committee Portal' },
+]
+
 const adminLinks = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/admin/applications', icon: FileText, label: 'All Applications' },
+  { to: '/committee', icon: ClipboardCheck, label: 'Committee Portal' },
   { to: '/admin/users', icon: Users, label: 'User Management' },
   { to: '/admin/settings', icon: Settings, label: 'Settings' },
 ]
@@ -50,6 +55,8 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
         ? internalReviewerLinks
         : role === 'external_reviewer'
           ? externalReviewerLinks
+          : role === 'committee_member'
+            ? committeeLinks
           : facultyLinks
 
   const handleSignOut = async () => {

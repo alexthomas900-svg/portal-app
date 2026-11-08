@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Save, Loader2, CheckCircle2, AlertCircle, ChevronDown, ChevronUp, Bot, MessageSquarePlus } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { getApplication, getReviewerReport, runEvaluation, getReviewerComments, addReviewerComment } from '../../services/applications'
-import { getMyInternalReview, createInternalReview, saveInternalReview } from '../../services/reviews'
+import { getMyInternalReview, createInternalReview, saveInternalReview, submitInternalReview } from '../../services/reviews'
 import {
   formatApplicationTypeLabel,
   formatPromotionLabel,
@@ -13,6 +13,7 @@ import {
   type EvaluationReport,
   type ReviewerComment,
 } from '../../types'
+import ConflictDeclaration from './ConflictDeclaration'
 
 const CRITERION_PROMPT_HELPERS: Record<string, string[]> = {
   personalInfoComments: ['Verify completeness of personal information.'],
@@ -93,6 +94,8 @@ export default function ReviewForm() {
   const [comments, setComments] = useState<ReviewerComment[]>([])
   const [commentInputs, setCommentInputs] = useState<Record<string, string>>({})
   const [savingComment, setSavingComment] = useState<string | null>(null)
+  const [conflictDeclared, setConflictDeclared] = useState(false)
+  const [formError, setFormError] = useState('')
 
   useEffect(() => {
     if (!id || !user) return
@@ -118,10 +121,28 @@ export default function ReviewForm() {
   const handleSave = async () => {
     if (!review) return
     setSaving(true)
+    setFormError('')
     try {
       await saveInternalReview(review)
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
+    } catch (saveError) {
+      setFormError(saveError instanceof Error ? saveError.message : 'Failed to save assessment.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleSubmitReview = async () => {
+    if (!review || !id) return
+    setSaving(true)
+    setFormError('')
+    try {
+      await saveInternalReview(review)
+      await submitInternalReview(id, review.id)
+      setReview({ ...review, status: 'submitted', submittedAt: new Date().toISOString() })
+    } catch (submitError) {
+      setFormError(submitError instanceof Error ? submitError.message : 'Failed to submit assessment.')
     } finally {
       setSaving(false)
     }
@@ -171,12 +192,22 @@ export default function ReviewForm() {
     )
   }
 
+  if (conflictDeclared) {
+    return (
+      <div className="max-w-3xl mx-auto">
+        <p className="card p-5 text-sm text-warning">Your conflict declaration is recorded. This assessment is paused until an administrator resolves it.</p>
+        <button onClick={() => navigate('/review/applications')} className="btn-secondary btn-sm mt-4">Back to Applications</button>
+      </div>
+    )
+  }
+
   const commentSections =
     app.applicationType === 'promotion' ? PROMOTION_COMMENT_SECTIONS : NON_PROMOTION_COMMENT_SECTIONS
 
   const flaggedPublications = app.publications.filter(
     (p) => p.verification?.status === 'unverified' || p.verification?.flagReason,
   )
+  const isSubmitted = review.status === 'submitted'
 
   return (
     <div className="max-w-3xl mx-auto">
@@ -186,6 +217,9 @@ export default function ReviewForm() {
       </button>
 
       {/* Applicant info */}
+      <ConflictDeclaration applicationId={app.id} onDeclared={() => setConflictDeclared(true)} />
+      {isSubmitted && <p className="card p-3 mb-4 text-sm text-success">Assessment submitted and locked.</p>}
+      {formError && <p role="alert" className="mb-4 p-3 rounded bg-danger-light text-danger text-sm">{formError}</p>}
       <div className="card p-5 mb-6">
         <h1 className="text-lg font-bold text-text mb-1">Review: {app.applicantName}</h1>
         <p className="text-sm text-text-secondary">
@@ -333,6 +367,7 @@ export default function ReviewForm() {
                 placeholder={`Comments on ${section.label.toLowerCase()} (max 200 words)...`}
                 rows={3}
                 maxLength={1500}
+                disabled={isSubmitted}
               />
               <p className="text-xs text-text-dim mt-1">
                 {(review[section.key] as string).split(/\s+/).filter(Boolean).length}/200 words
@@ -347,6 +382,7 @@ export default function ReviewForm() {
                       key={prompt}
                       type="button"
                       onClick={() => updateReview(section.key, ((review[section.key] as string) + (review[section.key] ? ' ' : '') + prompt))}
+                      disabled={isSubmitted}
                       className="block text-xs text-primary hover:underline text-left"
                     >
                       + {prompt}
@@ -372,6 +408,7 @@ export default function ReviewForm() {
                   <input
                     type="text"
                     value={commentInputs[section.key] ?? ''}
+                    disabled={isSubmitted}
                     onChange={(e) => setCommentInputs((prev) => ({ ...prev, [section.key]: e.target.value }))}
                     placeholder="Add annotation..."
                     className="flex-1 text-xs"
@@ -380,7 +417,7 @@ export default function ReviewForm() {
                   <button
                     type="button"
                     onClick={() => void handleAddComment(section.key)}
-                    disabled={savingComment === section.key || !commentInputs[section.key]?.trim()}
+                    disabled={isSubmitted || savingComment === section.key || !commentInputs[section.key]?.trim()}
                     className="btn-secondary btn-sm"
                   >
                     {savingComment === section.key ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Add'}
@@ -400,6 +437,7 @@ export default function ReviewForm() {
           onChange={(e) => updateReview('overallComments', e.target.value)}
           placeholder="Overall evaluation comments..."
           rows={4}
+          disabled={isSubmitted}
         />
       </div>
 
@@ -412,6 +450,7 @@ export default function ReviewForm() {
               key={rec.value}
               type="button"
               onClick={() => updateReview('recommendation', rec.value)}
+              disabled={isSubmitted}
               className={`p-3 rounded-lg border text-sm font-medium text-center transition-colors ${
                 review.recommendation === rec.value
                   ? rec.color
@@ -426,7 +465,8 @@ export default function ReviewForm() {
 
       {/* Save */}
       <div className="flex justify-end gap-2">
-        <button onClick={handleSave} disabled={saving} className="btn-primary">
+        {!isSubmitted && (
+        <button onClick={handleSave} disabled={saving} className="btn-secondary">
           {saving ? (
             <Loader2 className="w-4 h-4 animate-spin" />
           ) : saved ? (
@@ -436,6 +476,8 @@ export default function ReviewForm() {
           )}
           {saved ? 'Saved!' : 'Save Review'}
         </button>
+        )}
+        {!isSubmitted && <button onClick={handleSubmitReview} disabled={saving} className="btn-primary">Submit Assessment</button>}
       </div>
     </div>
   )
