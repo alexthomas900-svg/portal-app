@@ -1,58 +1,48 @@
 import StatusBadge from '../shared/StatusBadge'
 import { checkEligibility } from '../../utils/eligibility'
 import {
-  SECTION_MAX_MARKS,
+  EFFORTS_SCORES,
+  SCHOLARSHIP_SCORES,
+  SERVICES_SCORES,
+  TEACHING_SCORES,
   type Application,
   type EvaluationReport,
   type MarkedSection,
-  type SectionMarks,
 } from '../../types'
 
-const SECTIONS: MarkedSection[] = ['teaching', 'efforts', 'scholarship', 'services']
-
-// Mark bands from the institutional marking framework, highest first.
-const BANDS: Record<MarkedSection, [number, string][]> = {
-  teaching: [[45, 'Exceeds Expectations'], [36, 'Meets Expectations'], [27, 'Minimally Accepted'], [0, 'Deficient']],
-  efforts: [[10, 'Exceeds Expectations'], [8, 'Meets Expectations'], [6, 'Minimally Accepted'], [0, 'Deficient']],
-  scholarship: [[25, 'Exceeds Expectations'], [15, 'Meets Expectations'], [0, 'Deficient']],
-  services: [[20, 'Exceeds Expectations'], [16, 'Meets Expectations'], [12, 'Minimally Accepted'], [0, 'Deficient']],
-}
-
-/** The reviewer's total, or null until at least one section is marked. */
-export function marksTotal(marks?: SectionMarks): number | null {
-  const entered = SECTIONS.map((section) => marks?.[section]).filter((mark): mark is number => typeof mark === 'number')
-  return entered.length ? entered.reduce((sum, mark) => sum + mark, 0) : null
-}
+const RATING_LABELS = { exceeds: 'Exceeds Expectations', meets: 'Meets Expectations', minimal: 'Minimally Accepted', deficient: 'Deficient' }
 
 const rating = (value: number) => (value ? `${value}/5` : 'Not entered')
 
-interface Props {
-  app: Application
-  report: EvaluationReport | null
-  marks?: SectionMarks
+/** The system's marks for each section, from the application's current ratings. */
+export function systemMarks(app: Application): Record<MarkedSection, number> {
+  return {
+    teaching: TEACHING_SCORES[app.teachingEffectiveness.overallRating],
+    efforts: EFFORTS_SCORES[app.effortsToImprove.overallRating],
+    scholarship: SCHOLARSHIP_SCORES[app.scholarship.overallRating],
+    services: SERVICES_SCORES[app.services.overallRating],
+  }
 }
 
-export default function AssessmentSummary({ app, report, marks }: Props) {
+export default function AssessmentSummary({ app, report }: { app: Application; report: EvaluationReport | null }) {
   const eligibility = checkEligibility(app)
-  const { teachingEffectiveness: teaching, scholarship, services } = app
-  const total = marksTotal(marks)
-  const markedCount = SECTIONS.filter((section) => typeof marks?.[section] === 'number').length
-  const rows: { section: MarkedSection; label: string; evidence?: number }[] = [
-    { section: 'teaching', label: 'Teaching Effectiveness', evidence: report?.teaching.preliminaryScore },
-    { section: 'efforts', label: 'Efforts to Improve', evidence: report?.efforts.preliminaryScore },
-    { section: 'scholarship', label: 'Scholarship', evidence: report?.scholarly.preliminaryScore },
-    { section: 'services', label: 'Services', evidence: report?.service.preliminaryScore },
+  const { teachingEffectiveness: teaching, effortsToImprove: efforts, scholarship, services } = app
+  const marks = systemMarks(app)
+  const rows = [
+    { label: 'Teaching Effectiveness', marks: marks.teaching, max: 45, level: teaching.overallRating, evidence: report?.teaching.preliminaryScore },
+    { label: 'Efforts to Improve', marks: marks.efforts, max: 10, level: efforts.overallRating, evidence: report?.efforts.preliminaryScore },
+    { label: 'Scholarship', marks: marks.scholarship, max: 25, level: scholarship.overallRating, evidence: report?.scholarly.preliminaryScore },
+    { label: 'Services', marks: marks.services, max: 20, level: services.overallRating, evidence: report?.service.preliminaryScore },
   ]
 
   return (
     <div className="card p-5 mb-6" data-testid="assessment-summary">
       <div className="flex items-center justify-between gap-3 flex-wrap mb-3">
-        <h2 className="text-sm font-semibold text-text">Eligibility and Scores</h2>
+        <h2 className="text-sm font-semibold text-text">Eligibility Score</h2>
         <div className="flex items-center gap-2">
           <StatusBadge status={eligibility.status} />
           <span className="text-sm text-text-secondary">
-            Your total: <strong className="text-primary">{total === null ? 'Not marked' : `${total}/100`}</strong>
-            {total !== null && markedCount < SECTIONS.length && ` (${markedCount} of ${SECTIONS.length} marked)`}
+            Total: <strong className="text-primary">{rows.reduce((sum, row) => sum + row.marks, 0)}/100</strong>
           </span>
         </div>
       </div>
@@ -89,24 +79,20 @@ export default function AssessmentSummary({ app, report, marks }: Props) {
           <thead>
             <tr className="border-b border-border text-left text-xs text-text-secondary">
               <th className="py-2 font-medium">Section</th>
-              <th className="py-2 font-medium">Your marks</th>
+              <th className="py-2 font-medium">Marks</th>
               <th className="py-2 font-medium">Rating</th>
               <th className="py-2 font-medium">Automated evidence</th>
             </tr>
           </thead>
           <tbody>
-            {rows.map(({ section, label, evidence }) => {
-              const mark = marks?.[section]
-              const marked = typeof mark === 'number'
-              return (
-                <tr key={section} className="border-b border-border">
-                  <td className="py-2 text-text">{label}</td>
-                  <td className="py-2 font-medium text-text">{marked ? mark : '—'}/{SECTION_MAX_MARKS[section]}</td>
-                  <td className="py-2 text-text-secondary">{marked ? BANDS[section].find(([minimum]) => mark >= minimum)![1] : 'Not marked'}</td>
-                  <td className="py-2 text-text-secondary">{evidence === undefined ? '—' : `${evidence}/100`}</td>
-                </tr>
-              )
-            })}
+            {rows.map((row) => (
+              <tr key={row.label} className="border-b border-border">
+                <td className="py-2 text-text">{row.label}</td>
+                <td className="py-2 font-medium text-text">{row.marks}/{row.max}</td>
+                <td className="py-2 text-text-secondary">{RATING_LABELS[row.level]}</td>
+                <td className="py-2 text-text-secondary">{row.evidence === undefined ? '—' : `${row.evidence}/100`}</td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>

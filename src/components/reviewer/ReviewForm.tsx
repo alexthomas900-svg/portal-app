@@ -7,10 +7,7 @@ import { getMyInternalReview, createInternalReview, saveInternalReview, submitIn
 import {
   formatApplicationTypeLabel,
   formatPromotionLabel,
-  SECTION_MAX_MARKS,
   type Application,
-  type MarkedSection,
-  type SectionMarks,
   type InternalReview,
   type ReviewRecommendation,
   type EvaluationReport,
@@ -18,6 +15,7 @@ import {
 } from '../../types'
 import ConflictDeclaration from './ConflictDeclaration'
 import AssessmentSummary from './AssessmentSummary'
+import ReviewerMarking from './ReviewerMarking'
 import PublicationChecks from './PublicationChecks'
 
 const CRITERION_PROMPT_HELPERS: Record<string, string[]> = {
@@ -83,15 +81,6 @@ const RECOMMENDATIONS: { value: ReviewRecommendation; label: string; color: stri
   { value: 'conditionally_recommended', label: 'Conditionally Recommended', color: 'border-warning bg-warning-light text-warning' },
   { value: 'not_recommended', label: 'Not Recommended', color: 'border-danger bg-danger-light text-danger' },
 ]
-
-const SECTION_FOR_COMMENTS: Partial<Record<string, MarkedSection>> = {
-  teachingComments: 'teaching',
-  effortsComments: 'efforts',
-  scholarshipComments: 'scholarship',
-  servicesComments: 'services',
-}
-
-const EMPTY_MARKS: SectionMarks = { teaching: null, efforts: null, scholarship: null, services: null }
 
 export default function ReviewForm() {
   const { id } = useParams<{ id: string }>()
@@ -277,7 +266,16 @@ export default function ReviewForm() {
         </p>
       </div>
 
-      <AssessmentSummary app={app} report={report} marks={review.sectionMarks} />
+      <AssessmentSummary app={app} report={report} />
+      <ReviewerMarking
+        app={app}
+        marks={review.sectionMarks}
+        locked={isSubmitted}
+        saving={saving}
+        saved={saved}
+        onChange={(sectionMarks) => updateReview('sectionMarks', sectionMarks)}
+        onSave={() => void handleSave()}
+      />
 
       {/* Publication verification flags */}
       {flaggedPublications.length > 0 && (
@@ -430,31 +428,6 @@ export default function ReviewForm() {
               <p className="text-xs text-text-dim mt-1">
                 {(review[section.key] as string).split(/\s+/).filter(Boolean).length}/200 words
               </p>
-
-              {SECTION_FOR_COMMENTS[section.key] && (() => {
-                const markedSection = SECTION_FOR_COMMENTS[section.key]!
-                const marks = review.sectionMarks ?? EMPTY_MARKS
-                return (
-                  <label className="flex items-center gap-2 mt-3 text-sm font-medium text-text">
-                    Marks
-                    <input
-                      type="number"
-                      min={0}
-                      max={SECTION_MAX_MARKS[markedSection]}
-                      step="0.5"
-                      aria-label={`${section.label} marks`}
-                      value={marks[markedSection] ?? ''}
-                      disabled={isSubmitted}
-                      onChange={(e) => updateReview('sectionMarks', {
-                        ...marks,
-                        [markedSection]: e.target.value === '' ? null : Number(e.target.value),
-                      })}
-                      style={{ width: '6rem' }}
-                    />
-                    <span className="text-text-secondary font-normal whitespace-nowrap">out of {SECTION_MAX_MARKS[markedSection]}</span>
-                  </label>
-                )
-              })()}
 
               {/* Prompt helpers */}
               {prompts.length > 0 && (
