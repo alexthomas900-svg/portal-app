@@ -8,6 +8,10 @@ export interface UserProfile {
   role: UserRole
   department?: string
   createdAt: string
+  username?: string
+  generatedLogin?: boolean
+  mustChangePassword?: boolean
+  disabled?: boolean
 }
 
 // ── Promotion ──

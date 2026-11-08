@@ -41,8 +41,21 @@ export async function registerWithEmail(
   return cred.user
 }
 
-export async function signInWithEmail(email: string, password: string) {
+// Generated reviewer logins use a username, which maps to this reserved domain.
+const GENERATED_LOGIN_DOMAIN = 'reviewers.example.com'
+
+export async function signInWithEmail(emailOrUsername: string, password: string) {
+  const identifier = emailOrUsername.trim()
+  const email = identifier.includes('@') ? identifier : `${identifier.toLowerCase()}@${GENERATED_LOGIN_DOMAIN}`
   return signInWithEmailAndPassword(auth, email, password)
+}
+
+export async function changeTemporaryPassword(newPassword: string) {
+  const email = auth.currentUser?.email
+  if (!email) throw new Error('You are not signed in.')
+  await apiPost('/api/auth/change-password', { newPassword })
+  // The change invalidates the old session, so sign in again with the new password.
+  await signInWithEmailAndPassword(auth, email, newPassword)
 }
 
 export async function signOut() {

@@ -120,7 +120,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
         <div className="px-3 pb-4 mt-auto">
           <div className="p-3 rounded-lg bg-surface-alt border border-border">
             <p className="text-sm font-medium text-text truncate">{profile?.displayName}</p>
-            <p className="text-xs text-text-dim truncate">{profile?.email}</p>
+            <p className="text-xs text-text-dim truncate">{profile?.username ?? profile?.email}</p>
             <p className="text-[10px] text-text-dim uppercase tracking-wide mt-1">
               {role?.replace('_', ' ')}
             </p>
