@@ -15,6 +15,7 @@ import {
 } from '../../types'
 import { useAuth } from '../../contexts/AuthContext'
 import { printPdfReport } from '../../utils/reports'
+import { buildApplicationPdfRows } from '../../utils/applicationPdf'
 import { generateAPA } from '../../utils/apa'
 
 export default function ApplicationView() {
@@ -61,17 +62,13 @@ export default function ApplicationView() {
     ? `${formatPromotionLabel(app.promotionType)} Promotion Application`
     : formatApplicationTypeLabel(app.applicationType)
   const applicationReportRows = [
-    { label: 'Reference', value: app.id },
-    { label: 'Applicant', value: app.personalInfo.fullName },
-    { label: 'Department', value: app.personalInfo.department },
-    { label: 'Designation', value: app.personalInfo.currentDesignation },
-    { label: 'Status', value: app.status },
-    { label: 'Submitted', value: app.submittedAt ? new Date(app.submittedAt).toLocaleDateString() : 'Not submitted' },
-    { label: 'Qualifications', value: app.qualifications.map((item) => `${item.degree} in ${item.field}, ${item.institution} (${item.year})`).join('\n') },
-    { label: 'Research statement', value: app.researchStatement },
-    { label: 'Uploaded document index', value: Object.entries(app.documents ?? {}).flatMap(([key, value]) =>
-      Array.isArray(value) ? value.map((file) => `${key}: ${file.name}`) : value ? [`${key}: ${(value as { name: string }).name}`] : [],
-    ).join('\n') },
+    ...buildApplicationPdfRows(app),
+    ...(isApplicant ? [] : [
+      { label: 'Status', value: app.status },
+      { label: 'Uploaded document index', value: Object.entries(app.documents ?? {}).flatMap(([key, value]) =>
+        Array.isArray(value) ? value.map((file) => `${key}: ${file.name}`) : value ? [`${key}: ${(value as { name: string }).name}`] : [],
+      ).join('\n') },
+    ]),
   ]
   const annualReportRows = app.annualEvaluation ? [
     { label: 'Evaluation year', value: app.annualEvaluation.evaluationYear },

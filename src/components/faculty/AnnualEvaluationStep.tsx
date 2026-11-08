@@ -65,9 +65,6 @@ export default function AnnualEvaluationStep({ applicationId, data, onChange }: 
     <div className="space-y-6">
       <div>
         <h2 className="text-xl font-bold text-text">Annual Faculty Self-Evaluation</h2>
-        <p className="text-sm text-text-secondary mt-1">
-          This annual record is assessed independently and does not determine promotion scores.
-        </p>
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="block text-sm font-medium text-text">

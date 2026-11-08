@@ -14,11 +14,7 @@ export default function ScholarshipStep({ data, onChange }: Props) {
     <div className="space-y-6">
       <div>
         <h3 className="text-lg font-semibold text-text mb-1">Scholarship</h3>
-        <p className="text-sm text-text-secondary">Describe your scholarly activity. Ratings and evidence review are confidential.</p>
-      </div>
-
-      <div className="p-3 rounded-lg bg-warning-light border border-yellow-200 text-sm text-warning">
-        <strong>Note:</strong> Describe your research and scholarly contributions, including publications, conference presentations, grants, editorial work, awards, and student supervision. Add publications in the Publications section and upload supporting evidence in Document Upload. Ratings and evidence assessments are confidential.
+        <p className="text-sm text-text-secondary">Describe your scholarly activity.</p>
       </div>
 
       <div className="space-y-4">

@@ -22,10 +22,6 @@ export default function TeachingStep({ data, onChange, applicationId, courseOutl
       </div>
 
       <div className="space-y-4">
-        <div className="p-3 rounded-lg bg-warning-light border border-yellow-200 text-sm text-warning">
-          <strong>Note:</strong> Describe your teaching and learning approach using Fink’s Significant Learning Taxonomy and Bloom’s cognitive levels. Upload one sample SLO document and at least two course outlines; student feedback files are optional and may be uploaded in multiples.
-        </div>
-
         <div>
           <label className="block text-sm font-medium text-text mb-1.5">
             Fink's Taxonomy Alignment
