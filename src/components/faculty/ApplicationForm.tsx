@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, ArrowRight, Save, Send, Loader2 } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Download, Save, Send, Loader2 } from 'lucide-react'
 import { getApplication, saveApplication, submitApplication } from '../../services/applications'
 import type { Application } from '../../types'
 import { formatApplicationTypeLabel, formatPromotionLabel } from '../../types'
@@ -16,9 +16,10 @@ import ResearchStatementStep from './steps/ResearchStatement'
 import ServicesStep from './steps/Services'
 import DocumentUploadStep from './steps/DocumentUpload'
 import DeclarationStep from './steps/Declaration'
-import ApplicationReview from './ApplicationReview'
 import AnnualEvaluationStep from './AnnualEvaluationStep'
 import { emptyAnnualEvaluation } from '../../types'
+import { printPdfReport } from '../../utils/reports'
+import { buildApplicationPdfRows } from '../../utils/applicationPdf'
 
 const PROMOTION_STEP_LABELS = [
   'Personal Info',
@@ -31,7 +32,6 @@ const PROMOTION_STEP_LABELS = [
   'Research',
   'Services',
   'Documents',
-  'Preview',
   'Declaration',
 ]
 
@@ -44,14 +44,12 @@ const NON_PROMOTION_STEP_LABELS = [
   'Scholarship',
   'Services',
   'Documents',
-  'Preview',
   'Declaration',
 ]
 
 const ANNUAL_EVALUATION_STEP_LABELS = [
   'Personal Info',
   'Annual Evaluation',
-  'Preview',
   'Declaration',
 ]
 
@@ -164,8 +162,7 @@ export default function ApplicationForm() {
           />
         )
       }
-      if (step === 2) return <ApplicationReview application={application} />
-      if (step === 3) {
+      if (step === 2) {
         return (
           <DeclarationStep
             application={application}
@@ -209,8 +206,7 @@ export default function ApplicationForm() {
     const researchIndex = 7
     const servicesIndex = isPromotion ? 8 : 6
     const documentsIndex = isPromotion ? 9 : 7
-    const reviewIndex = isPromotion ? 10 : 8
-    const declarationIndex = isPromotion ? 11 : 9
+    const declarationIndex = isPromotion ? 10 : 8
 
     if (step === teachingIndex) {
       return (
@@ -282,10 +278,6 @@ export default function ApplicationForm() {
       )
     }
 
-    if (step === reviewIndex) {
-      return <ApplicationReview application={application} />
-    }
-
     if (step === declarationIndex) {
       return (
         <DeclarationStep
@@ -299,6 +291,9 @@ export default function ApplicationForm() {
   }
 
   const isLastStep = step === stepLabels.length - 1
+  const applicationTitle = isPromotion
+    ? `${formatPromotionLabel(application.promotionType)} Promotion Application`
+    : formatApplicationTypeLabel(application.applicationType)
 
   return (
     <div className="max-w-3xl mx-auto">
@@ -311,11 +306,16 @@ export default function ApplicationForm() {
           <ArrowLeft className="w-4 h-4" />
           Back
         </button>
-        <h1 className="text-xl font-bold text-text">
-          {isPromotion
-            ? `${formatPromotionLabel(application.promotionType)} Promotion Application`
-            : formatApplicationTypeLabel(application.applicationType)}
-        </h1>
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <h1 className="text-xl font-bold text-text">{applicationTitle}</h1>
+          <button
+            type="button"
+            onClick={() => printPdfReport(applicationTitle, buildApplicationPdfRows(application))}
+            className="btn-secondary btn-sm"
+          >
+            <Download className="w-3.5 h-3.5" /> Download PDF
+          </button>
+        </div>
       </div>
 
       {/* Progress */}

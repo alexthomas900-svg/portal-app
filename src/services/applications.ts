@@ -1,5 +1,5 @@
 import { apiGet, apiPost, apiPut, apiDelete } from '../lib/api'
-import type { Application, EvaluationReport, PublicationVerification, ReviewerComment } from '../types'
+import type { Application, EvaluationReport, Publication, PublicationCategory, ReviewerComment } from '../types'
 
 export async function saveApplication(application: Application): Promise<void> {
   await apiPut(`/api/applications/${application.id}`, application)
@@ -41,11 +41,19 @@ export async function deleteApplication(id: string): Promise<void> {
   await apiDelete(`/api/applications/${id}`)
 }
 
-export async function verifyPublication(
-  applicationId: string,
-  pubId: string,
-): Promise<PublicationVerification> {
-  return apiPost<PublicationVerification>(`/api/applications/${applicationId}/publications/${pubId}/verify`, {})
+export interface PublicationReview {
+  sources?: Partial<Record<'SCOPUS' | 'WOS' | 'HEC' | 'CNKI', 'found' | 'not_found' | 'manual'>>
+  category?: PublicationCategory | null
+}
+
+export async function reviewPublication(applicationId: string, publicationId: string, review: PublicationReview): Promise<Publication[]> {
+  const result = await apiPost<{ publications: Publication[] }>(`/api/applications/${applicationId}/publications/${publicationId}/manual-review`, review)
+  return result.publications
+}
+
+export async function verifyAllPublications(applicationId: string): Promise<Publication[]> {
+  const result = await apiPost<{ publications: Publication[] }>(`/api/applications/${applicationId}/publications/verify-all`, {})
+  return result.publications
 }
 
 export async function runEvaluation(applicationId: string): Promise<EvaluationReport> {

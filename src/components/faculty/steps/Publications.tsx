@@ -71,16 +71,11 @@ export default function PublicationsStep({ data, onChange }: Props) {
     onChange(data.filter((_, i) => i !== index))
   }
 
-  const recognizedCount = data.filter((p) => p.verification?.status === 'verified').length
-
   return (
     <div className="space-y-6">
       <div>
         <h3 className="text-lg font-semibold text-text mb-1">Publications</h3>
-        <p className="text-sm text-text-secondary">
-          Add all journal publications. Verified publications:{' '}
-          <span className="font-semibold text-primary">{recognizedCount}</span>
-        </p>
+        <p className="text-sm text-text-secondary">Add all journal publications.</p>
       </div>
 
       {data.length === 0 && (
@@ -96,14 +91,7 @@ export default function PublicationsStep({ data, onChange }: Props) {
       {data.map((pub, index) => (
         <div key={pub.id} className="card p-4 space-y-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <h4 className="text-sm font-medium text-text">Publication {index + 1}</h4>
-              {pub.verification?.status === 'verified' ? (
-                <span className="badge-success">Verified</span>
-              ) : (
-                <span className="badge-warning">Pending verification</span>
-              )}
-            </div>
+            <h4 className="text-sm font-medium text-text">Publication {index + 1}</h4>
             <button
               type="button"
               onClick={() => removeItem(index)}

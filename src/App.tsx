@@ -5,6 +5,7 @@ import type { UserRole } from './types'
 // Auth
 import SignIn from './components/auth/SignIn'
 import Register from './components/auth/Register'
+import ChangePassword from './components/auth/ChangePassword'
 
 // Layout
 import DashboardLayout from './components/layout/DashboardLayout'
@@ -26,7 +27,7 @@ import UserManagement from './components/admin/UserManagement'
 import CommitteePortal from './components/reviewer/CommitteePortal'
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth()
+  const { user, loading, profile } = useAuth()
 
   // While auth is initializing, show spinner.
   if (loading) {
@@ -40,6 +41,7 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
     )
   }
   if (!user) return <Navigate to="/signin" replace />
+  if (profile?.mustChangePassword) return <ChangePassword />
   return <>{children}</>
 }
 

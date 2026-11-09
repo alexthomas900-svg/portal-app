@@ -132,6 +132,8 @@ export default function SignIn() {
         setError('Email/password sign-in is disabled in Firebase. Enable it in Firebase Auth > Sign-in method.')
       } else if (code === 'auth/invalid-api-key') {
         setError('Firebase API key is invalid. Check VITE_FB_API_KEY in your .env file.')
+      } else if (code === 'auth/user-disabled') {
+        setError('This account has been disabled. Please contact the administrator.')
       } else if (code === 'auth/too-many-requests') {
         setError('Too many attempts. Please wait a moment and try again.')
       } else {
@@ -205,14 +207,14 @@ export default function SignIn() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-text mb-1.5">Email</label>
+              <label className="block text-sm font-medium text-text mb-1.5">Email or username</label>
               <input
-                type="email"
+                type="text"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@fccollege.edu.pk"
                 required
-                autoComplete="email"
+                autoComplete="username"
               />
             </div>
 

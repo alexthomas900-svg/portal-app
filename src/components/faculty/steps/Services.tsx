@@ -14,7 +14,7 @@ export default function ServicesStep({ data, onChange }: Props) {
     <div className="space-y-6">
       <div>
         <h3 className="text-lg font-semibold text-text mb-1">Services</h3>
-        <p className="text-sm text-text-secondary">Describe your service contributions. Ratings and evidence review are confidential.</p>
+        <p className="text-sm text-text-secondary">Describe your service contributions.</p>
       </div>
 
       <div className="space-y-4">

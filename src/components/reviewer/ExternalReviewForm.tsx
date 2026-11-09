@@ -114,7 +114,7 @@ export default function ExternalReviewForm() {
         <p className="text-sm text-text-secondary">
           Reference {app.id}
         </p>
-        {app.documents.updatedCV && (
+        {app.documents.updatedCV ? (
           <a
             href={app.documents.updatedCV.url}
             target="_blank"
@@ -123,6 +123,8 @@ export default function ExternalReviewForm() {
           >
             View Updated CV
           </a>
+        ) : (
+          <p className="text-sm text-text-secondary mt-3">The applicant has not uploaded a CV.</p>
         )}
       </div>
 

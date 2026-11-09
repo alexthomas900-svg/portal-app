@@ -4,7 +4,11 @@ import { adminAuth } from '../firebase-admin.js'
 export interface AuthRequest extends Request<Record<string, string>> {
   uid?: string
   userEmail?: string
+  generatedLogin?: boolean
 }
+
+// All a generated login may reach until its temporary password is replaced.
+const PASSWORD_CHANGE_ROUTES = new Set(['/api/auth/me', '/api/auth/change-password'])
 
 /**
  * Middleware that verifies Firebase ID tokens from the Authorization header.
@@ -22,9 +26,17 @@ export async function requireAuth(req: AuthRequest, res: Response, next: NextFun
   const idToken = header.slice(7)
 
   try {
-    const decoded = await adminAuth.verifyIdToken(idToken)
+    let decoded = await adminAuth.verifyIdToken(idToken)
+    // Admins can disable or reset generated logins, so those tokens are also
+    // checked against the account's current state.
+    if (decoded.generatedLogin) decoded = await adminAuth.verifyIdToken(idToken, true)
     req.uid = decoded.uid
     req.userEmail = decoded.email
+    req.generatedLogin = decoded.generatedLogin === true
+    if (decoded.mustChangePassword && !PASSWORD_CHANGE_ROUTES.has(`${req.baseUrl}${req.path}`)) {
+      res.status(403).json({ error: 'Password change required' })
+      return
+    }
     next()
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)

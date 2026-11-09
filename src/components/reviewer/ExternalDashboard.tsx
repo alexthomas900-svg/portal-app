@@ -89,7 +89,7 @@ export default function ExternalDashboard() {
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  {app.documents.updatedCV && (
+                  {app.documents.updatedCV ? (
                     <a
                       href={app.documents.updatedCV.url}
                       target="_blank"
@@ -99,6 +99,8 @@ export default function ExternalDashboard() {
                       <FileText className="w-3.5 h-3.5" />
                       View CV
                     </a>
+                  ) : (
+                    <span className="text-xs text-text-dim">No CV uploaded</span>
                   )}
                   <button
                     onClick={() => navigate(`/external-review/${app.id}`)}
