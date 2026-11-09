@@ -11,6 +11,7 @@ function groupsFor(app: Application): { title: string; entries: Entry[] }[] {
       title: 'Application Documents',
       entries: [
         ['Updated CV', d.updatedCV],
+        ['Self-Evaluation Form', d.selfEvaluationForm],
         ['Cover Letter', d.coverLetter],
         ['Research Statement', d.researchStatement],
         ['PhD Degree', d.phdDegree],
@@ -19,7 +20,6 @@ function groupsFor(app: Application): { title: string; entries: Entry[] }[] {
         ['MPhil/MS Degree', d.mastersDegree],
         ['MPhil/MS Transcript', d.mastersTranscript],
         ['Experience Letters', d.experienceLetters],
-        ['Self-Evaluation Form', d.selfEvaluationForm],
         ["Chair's Evaluation", d.chairEvaluation],
         ["Dean's Evaluation", d.deanEvaluation],
         ['Efforts to Improve', d.effortsToImprovePdf],

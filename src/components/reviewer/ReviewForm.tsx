@@ -16,6 +16,7 @@ import {
 import ConflictDeclaration from './ConflictDeclaration'
 import AssessmentSummary from './AssessmentSummary'
 import ReviewerMarking from './ReviewerMarking'
+import ApplicantAnswers from './ApplicantAnswers'
 import ApplicantDocuments from './ApplicantDocuments'
 import PublicationChecks from './PublicationChecks'
 
@@ -277,6 +278,7 @@ export default function ReviewForm() {
         onChange={(sectionMarks) => updateReview('sectionMarks', sectionMarks)}
         onSave={() => void handleSave()}
       />
+      <ApplicantAnswers app={app} />
       <ApplicantDocuments app={app} />
 
       {/* Publication verification flags */}

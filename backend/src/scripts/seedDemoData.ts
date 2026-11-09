@@ -240,6 +240,7 @@ function sharedSections(def: FacultyDef) {
       assignments: [fakeDoc('assignment-sample.pdf')],
       teachingSupportDocs: [fakeDoc('teaching-support.pdf')],
       updatedCV: fakeDoc('updated-cv.pdf'),
+      selfEvaluationForm: fakeDoc('self-evaluation.pdf'),
     },
     effortsToImprove: {
       innovations: 'Introduced flipped-classroom delivery for core courses, moving lecture content to recorded modules and using class time for applied problem-solving.',
@@ -487,13 +488,14 @@ async function main() {
   await submitInternalReview(internal1, saraId, 'conditionally_recommended')
   // internal2 intentionally left pending to show an in-progress review.
 
-  console.log('\nScenario 4 — annual self-evaluation, no review workflow needed (Dr. Omer Farooq) — done above.')
+  console.log('\nScenario 4 — annual self-evaluation waiting for internal review (Dr. Omer Farooq)...')
+  await assignReviewers(admin, applicationIds['omer.farooq@fccollege.edu.pk']!, internal1, internal2)
 
   console.log('\nDone! Sample data is ready:')
   console.log('  - Dr. Ayesha Siddiqui (Associate Professor promotion): decision_made / approved')
   console.log('  - Dr. Bilal Ahmed (Full Professor promotion): reviewed, awaiting committee decision')
   console.log('  - Dr. Sara Malik (Contract renewal): under_review, one of two reviews submitted')
-  console.log('  - Dr. Omer Farooq (Self-evaluation): submitted')
+  console.log('  - Dr. Omer Farooq (Self-evaluation): assigned to both internal reviewers')
   console.log('  - Demo Faculty: 3 applications auto-seeded on first sign-in (unchanged)')
   process.exit(0)
 }

@@ -22,7 +22,7 @@ export default function InternalDashboard() {
 
     const loadApplications = async () => {
       try {
-        const apps = (await getSubmittedApplications()).filter((app) => app.applicationType !== 'self_evaluation')
+        const apps = await getSubmittedApplications()
         if (active) setApplications(apps)
         const reviews = await Promise.all(apps.map((app) => getMyInternalReview(app.id, user?.uid ?? '').catch(() => null)))
         if (active) setTotals(Object.fromEntries(apps.map((app, index) => [app.id, marksTotal(reviews[index]?.sectionMarks)])))
@@ -63,7 +63,7 @@ export default function InternalDashboard() {
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-text">Internal Reviewer Dashboard</h1>
         <p className="text-text-secondary mt-1">
-          Review submitted promotion and contract renewal applications.
+          Review submitted promotion, contract renewal and self-evaluation applications.
         </p>
       </div>
 
